@@ -1,0 +1,12 @@
+Municipality of Caba, La Union
+Form: Building Permit Application (Placeholder)
+
+Instructions:
+- This is a prototype placeholder file.
+- Print, fill out, and submit with plans to the Municipal Engineering Office.
+
+Owner: ____________________________________
+Project Location: __________________________
+Type of Construction: ______________________
+
+Signature: __________________ Date: ________

@@ -1,0 +1,12 @@
+Municipality of Caba, La Union
+Form: Community Tax Certificate (Cedula) Application (Placeholder)
+
+Instructions:
+- This is a prototype placeholder file.
+- Print, fill out, and submit to the Treasurer's Office.
+
+Applicant Name: ____________________________
+Address: __________________________________
+Taxable Income (if any): ___________________
+
+Signature: __________________ Date: ________

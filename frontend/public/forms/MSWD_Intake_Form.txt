@@ -1,0 +1,12 @@
+Municipality of Caba, La Union
+Form: MSWD Intake Form (Placeholder)
+
+Instructions:
+- This is a prototype placeholder file.
+- Print, fill out, and submit to MSWD Office.
+
+Client Name: ______________________________
+Address: __________________________________
+Concern/Request: __________________________
+
+Signature: __________________ Date: ________

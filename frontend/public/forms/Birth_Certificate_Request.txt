@@ -1,0 +1,12 @@
+Municipality of Caba, La Union
+Form: Birth Certificate Request (Placeholder)
+
+Instructions:
+- This is a prototype placeholder file.
+- Print, fill out, and submit to the Office of the Municipal Civil Registrar.
+
+Name on Certificate: ______________________
+Date of Birth: ____________________________
+Parents: __________________________________
+
+Requestor: __________________ Date: ________

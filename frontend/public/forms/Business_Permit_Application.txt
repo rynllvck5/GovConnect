@@ -1,0 +1,12 @@
+Municipality of Caba, La Union
+Form: Business Permit Application (Placeholder)
+
+Instructions:
+- This is a prototype placeholder file.
+- Print, fill out, and submit to the BPLO.
+
+Business Name: ____________________________
+Owner: ___________________________________
+Address: __________________________________
+
+Signature: __________________ Date: ________
