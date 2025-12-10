@@ -17,6 +17,7 @@ export default function Services() {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(null); // service object
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [errorDialog, setErrorDialog] = useState({ open: false, title: '', message: '' });
 
   async function loadServices() {
     setLoading(true); setError('');
@@ -39,11 +40,23 @@ export default function Services() {
   const canEdit = (svc) => isAdmin || (!!user && user.role === 'officer' && myOfficeId && (Number(myOfficeId) === Number(svc.office_id)));
 
   async function handleCreate(fd) {
-    await fetch(`${API_BASE}/services`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const r = await fetch(`${API_BASE}/services`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    if (!r.ok) {
+      if (r.status === 409) {
+        let msg = 'A service with this name already exists.';
+        try {
+          const data = await r.json();
+          if (data && data.error) msg = data.error;
+        } catch {}
+        throw new Error(msg);
+      }
+      throw new Error('Failed to save service');
+    }
     await loadServices();
   }
   async function handleUpdate(id, fd) {
-    await fetch(`${API_BASE}/services/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const r = await fetch(`${API_BASE}/services/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    if (!r.ok) throw new Error('Failed to update service');
     await loadServices();
   }
   async function confirmDelete() {
@@ -126,13 +139,26 @@ export default function Services() {
 
       {/* Add Service Modal */}
       <Modal open={!!showAdd} onClose={()=>setShowAdd(false)} title="Add Service">
-        <ServiceForm onClose={()=>setShowAdd(false)} onSubmit={handleCreate} submittingText="Create" isAdmin={isAdmin} />
+        <ServiceForm
+          onClose={()=>setShowAdd(false)}
+          onSubmit={handleCreate}
+          submittingText="Create"
+          isAdmin={isAdmin}
+          onError={(msg)=>setErrorDialog({ open: true, title: 'Service Error', message: msg })}
+        />
       </Modal>
 
       {/* Edit Service Modal */}
       <Modal open={!!showEdit} onClose={()=>setShowEdit(null)} title="Edit Service">
         {showEdit && (
-          <ServiceForm service={showEdit} onClose={()=>setShowEdit(null)} onSubmit={(fd)=>handleUpdate(showEdit.id, fd)} submittingText="Save" isAdmin={isAdmin} />
+          <ServiceForm
+            service={showEdit}
+            onClose={()=>setShowEdit(null)}
+            onSubmit={(fd)=>handleUpdate(showEdit.id, fd)}
+            submittingText="Save"
+            isAdmin={isAdmin}
+            onError={(msg)=>setErrorDialog({ open: true, title: 'Service Error', message: msg })}
+          />
         )}
       </Modal>
 
@@ -146,11 +172,20 @@ export default function Services() {
           </div>
         </div>
       </Modal>
+      {/* Error Modal */}
+      <Modal open={errorDialog.open} onClose={()=>setErrorDialog({ open: false, title: '', message: '' })} title={errorDialog.title || 'Error'}>
+        <div className="space-y-3">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorDialog.message}</div>
+          <div className="flex justify-end">
+            <button type="button" onClick={()=>setErrorDialog({ open: false, title: '', message: '' })} className="px-4 py-2 rounded-md border">Close</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function ServiceForm({ service, onClose, onSubmit, submittingText, isAdmin }) {
+function ServiceForm({ service, onClose, onSubmit, submittingText, isAdmin, onError }) {
   const { user } = useAuth();
   const [name, setName] = useState(service?.name || '');
   const [description, setDescription] = useState(service?.description || '');
@@ -210,6 +245,8 @@ function ServiceForm({ service, onClose, onSubmit, submittingText, isAdmin }) {
 
       await onSubmit(fd);
       onClose();
+    } catch (e) {
+      onError?.(e.message || 'Failed to save service');
     } finally {
       setSubmitting(false);
     }

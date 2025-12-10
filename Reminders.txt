@@ -1,0 +1,77 @@
+- Handle REC (follow up ma'am amy) - Orlando & Brandon
+- Use Case - Novelyn & Princess
+- Chapter 3 - Renren
+- Prototype (figma) - Orlando & Roy & Brandon
+- Survey sa Munisipyo (weekly) (Who will facilitate and document?) - All
+- Daily Scrum (who will facilitate and document?) (9PM) - Princess & Novelyn
+Scrum Master
+	- Ano ginawa mo ngayon?
+	- Ano gagawin mo bukas?
+	- May mga nagging problema ba sa trabaho mo?
+
+Final week: Survey - WEQ (who will facilitate and document?) - All
+
+
+
+Sprints per week (6 weeks):
+Week 1 (Dec 8-13) (Sprint 1)
+	Offices, Barangays, Services 
+-------------------------------------------------------------------------------
+Week 2 (Dec 15-19)
+	Government Executive Orders, Ordinances, and Resolutions, Downloadable Forms, Government Officials, Tourism, Projects 
+-------------------------------------------------------------------------------
+Week 3 (Dec 22-26)
+	Features/News 
+Week 4 (Dec 29-Jan 2)
+	Forum (Newsfeed, Post, Comments, Notifications, Messages)
+Week 5 (Jan 5-Jan 9)
+	About Page, Home Page, User/Role Permission
+-------------------------------------------------------------------------------
+Week 6 (Jan 12-16)
+	Log in/Sign Up, Search, FAQ
+
+
+1. Open VSC
+
+2. Click file
+
+3. Open folder...
+
+4. Select Destination
+
+5. Open new terminal
+
+6. git clone https://github.com/rynllvck5/GovConnect.git
+
+7. Right click "Backend" folder
+
+8. Open in integrated terminal
+
+9. Type "npm start" in terminal then enter
+
+10. Right click "frontend" folder
+
+11. Open in integrated terminal
+
+12. Type "npm run dev"
+
+
+Super Admin:
+superadmin@govconnect.local
+ChangeMe_SuperAdmin123!
+
+Admin: 
+admin@govconnect.local
+ChangeMe_Admin123!
+
+Officer:
+officer@govconnect.local
+ChangeMe_Officer123!
+
+Barangay Captain:
+captain@govconnect.local
+ChangeMe_Captain123!
+
+Constituent:
+constituent@govconnect.local
+ChangeMe_Constituent123!

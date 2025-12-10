@@ -117,6 +117,34 @@ async function run() {
   await query("ALTER TABLE services ADD COLUMN IF NOT EXISTS steps JSONB NOT NULL DEFAULT '[]'::jsonb");
   await query("ALTER TABLE services ADD COLUMN IF NOT EXISTS forms JSONB NOT NULL DEFAULT '[]'::jsonb");
 
+  // Dynamic Government CMS tables
+  await query(`CREATE TABLE IF NOT EXISTS gov_categories (
+    id SERIAL PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    schema_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    layout_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_gov_categories_slug_unique ON gov_categories(slug)');
+
+  await query(`CREATE TABLE IF NOT EXISTS gov_entries (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES gov_categories(id) ON DELETE CASCADE,
+    title TEXT,
+    content_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    published BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE INDEX IF NOT EXISTS idx_gov_entries_category_id ON gov_entries(category_id)');
+  await query('ALTER TABLE gov_entries ADD COLUMN IF NOT EXISTS manager_user_id INTEGER REFERENCES users(id)');
+
   await query(`CREATE TABLE IF NOT EXISTS users(
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,

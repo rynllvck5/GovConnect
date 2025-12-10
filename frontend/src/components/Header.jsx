@@ -1,12 +1,31 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../config';
 
 const navLinkClass = ({ isActive }) =>
   `px-3 py-2 rounded-md text-sm font-medium ${isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-700 hover:bg-blue-50'}`;
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const [govCats, setGovCats] = React.useState([]);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/gov/categories`);
+        if (!r.ok) return;
+        const list = await r.json();
+        if (alive) setGovCats(Array.isArray(list) ? list : []);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
+  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
+  const catsToShow = React.useMemo(() => {
+    if (isAdmin) return govCats;
+    return (govCats || []).filter(c => (c.entries_count || 0) > 0);
+  }, [govCats, isAdmin]);
   return (
     <header className="bg-white shadow sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -25,7 +44,23 @@ export default function Header() {
             <NavLink to="/" className={navLinkClass} end>Home</NavLink>
             <NavLink to="/services" className={navLinkClass}>Services</NavLink>
             <NavLink to="/forms" className={navLinkClass}>Forms</NavLink>
-            <NavLink to="/government" className={navLinkClass}>Government</NavLink>
+            <div className="relative group">
+              <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 cursor-pointer select-none">Government</span>
+              <div className="absolute right-0 mt-1 w-72 bg-white border rounded-md shadow-lg p-2 z-50 hidden group-hover:block">
+                <div className="text-xs uppercase text-gray-500 px-2 py-1">Quick Links</div>
+                <Link to="/government#officials" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Officials</Link>
+                <Link to="/government#offices" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Offices</Link>
+                <Link to="/government#barangays" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Barangays</Link>
+                <Link to="/government#awards" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Awards & Achievements</Link>
+                <div className="border-t my-2"></div>
+                {catsToShow.map(c => (
+                  <Link key={c.id} to={`/government#govcat-${c.slug}`} className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">{c.title}</Link>
+                ))}
+                {(!catsToShow || catsToShow.length === 0) && (
+                  <div className="px-3 py-2 text-sm text-gray-500">None yet</div>
+                )}
+              </div>
+            </div>
             <NavLink to="/tourism" className={navLinkClass}>Tourism</NavLink>
             <NavLink to="/projects" className={navLinkClass}>Projects</NavLink>
             <NavLink to="/news" className={navLinkClass}>Features</NavLink>
@@ -55,7 +90,21 @@ export default function Header() {
                 <NavLink to="/" className={navLinkClass} end>Home</NavLink>
                 <NavLink to="/services" className={navLinkClass}>Services</NavLink>
                 <NavLink to="/forms" className={navLinkClass}>Forms</NavLink>
-                <NavLink to="/government" className={navLinkClass}>Government</NavLink>
+                <details>
+                  <summary className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 cursor-pointer select-none">Government</summary>
+                  <div className="mt-1 flex flex-col gap-1 px-2">
+                    <Link to="/government#officials" className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Officials</Link>
+                    <Link to="/government#offices" className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Offices</Link>
+                    <Link to="/government#barangays" className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Barangays</Link>
+                    <Link to="/government#awards" className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Awards & Achievements</Link>
+                    {catsToShow.map(c => (
+                      <Link key={c.id} to={`/government#govcat-${c.slug}`} className="px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">{c.title}</Link>
+                    ))}
+                    {(!catsToShow || catsToShow.length === 0) && (
+                      <div className="px-3 py-2 text-sm text-gray-500">None yet</div>
+                    )}
+                  </div>
+                </details>
                 <NavLink to="/tourism" className={navLinkClass}>Tourism</NavLink>
                 <NavLink to="/projects" className={navLinkClass}>Projects</NavLink>
                 <NavLink to="/news" className={navLinkClass}>Features</NavLink>

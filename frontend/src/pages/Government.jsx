@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import officials from '../data/officials';
 // import barangays from '../data/barangays';
 import awards from '../data/awards';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE, API_ORIGIN } from '../config';
 import Modal from '../components/Modal';
 import MapPicker from '../components/MapPicker';
+import CategoryForm from '../components/gov/CategoryForm';
+import EntryForm from '../components/gov/EntryForm';
 
 export default function Government() {
   const { user, token } = useAuth();
@@ -27,6 +29,7 @@ export default function Government() {
   const [showAddBrgy, setShowAddBrgy] = useState(false);
   const [showEditBrgy, setShowEditBrgy] = useState(null);
   const [deleteBrgy, setDeleteBrgy] = useState(null);
+  const [errorDialog, setErrorDialog] = useState({ open: false, title: '', message: '', description: '' });
 
   async function loadOffices() {
     setLoading(true); setError('');
@@ -39,8 +42,144 @@ export default function Government() {
     finally { setLoading(false); }
   }
 
+  // Anchor scrolling support
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location]);
+
+  // Helpers for dynamic sections
+  function renderFieldValue(type, value, label) {
+    if (value == null) return null;
+    if (type === 'image') return (<img alt="" src={`${API_ORIGIN}${value}`} className="w-full h-40 object-cover rounded" />);
+    if (type === 'images' || type === 'gallery') return (
+      <div className="grid grid-cols-2 gap-2">{(value || []).map((u,i)=>(<img key={i} alt="" src={`${API_ORIGIN}${u}`} className="w-full h-32 object-cover rounded" />))}</div>
+    );
+    if (type === 'file') return (<a className="text-blue-700 hover:underline" href={`${API_ORIGIN}${value}`} download>{label || 'Download file'}</a>);
+    if (type === 'files') return (
+      <ul className="list-disc ml-5">{(value || []).map((u,i)=>(<li key={i}><a className="text-blue-700 hover:underline" href={`${API_ORIGIN}${u}`} download>{`File ${i+1}`}</a></li>))}</ul>
+    );
+    if (type === 'link') return (<a className="text-blue-700 hover:underline" href={String(value)} target="_blank" rel="noreferrer">{String(value)}</a>);
+    if (type === 'textarea' || type === 'richtext') return (<p className="whitespace-pre-wrap">{String(value)}</p>);
+    return (<div>{String(value)}</div>);
+  }
+
+  function EntryCard({ e, fields }) {
+    const [expanded, setExpanded] = useState(false);
+    return (
+      <div className="border rounded-md p-4 bg-white relative">
+        <div className="flex items-start justify-between">
+          <div className="font-medium">{e.title || '—'}</div>
+          {isAdmin && (
+            <div className="flex gap-1">
+              <button onClick={()=>setEntryModal({ mode:'edit', entry: e, cat: dynCats.find(c=>c.id===e.category_id) })} className="text-xs px-2 py-1 rounded bg-yellow-500 text-white">Edit</button>
+              <button onClick={()=>setEntryDelete(e)} className="text-xs px-2 py-1 rounded bg-red-600 text-white">Delete</button>
+            </div>
+          )}
+        </div>
+        <div className={`mt-2 space-y-2 text-sm ${expanded ? '' : 'max-h-64 overflow-hidden relative'}`}>
+          {fields.map((f) => (
+            (e.content_json && e.content_json[f.key] != null) ? (
+              <div key={f.key}>
+                {(f.type === 'image' || f.type === 'images' || f.type === 'gallery') ? (
+                  <>
+                    {String(f.label || '').trim() ? (
+                      <div className="text-gray-700 font-medium text-xs mb-1">{f.label}</div>
+                    ) : null}
+                    {renderFieldValue(f.type, e.content_json[f.key], e.content_json[`${f.key}_label`])}
+                  </>
+                ) : (
+                  <>
+                    <div className="text-gray-700 font-medium text-xs mb-1">{f.label || f.key}</div>
+                    {renderFieldValue(f.type, e.content_json[f.key], e.content_json[`${f.key}_label`])}
+                  </>
+                )}
+              </div>
+            ) : null
+          ))}
+          {!expanded && (
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+          )}
+        </div>
+        <div className="flex justify-end mt-2">
+          <button type="button" onClick={()=>setExpanded(v=>!v)} className="text-xs px-2 py-1 rounded border bg-white">{expanded ? 'Show less' : 'Show more'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  function DynamicCategorySection({ cat }) {
+    const fields = Array.isArray(cat?.schema_json?.fields) ? cat.schema_json.fields : [];
+    const entries = entriesByCat[cat.id] || [];
+    if (!isAdmin && entries.length === 0) return null;
+    return (
+      <section id={`govcat-${cat.slug}`} className="scroll-mt-20">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold mb-3">{cat.title}</h2>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <button onClick={()=>setEntryModal({ mode:'add', cat })} className="text-sm px-3 py-1.5 rounded border bg-white">Add</button>
+              <button onClick={()=>setCatModal({ mode:'edit', cat })} className="text-sm px-3 py-1.5 rounded border bg-white">Edit</button>
+              <button onClick={()=>setCatDelete(cat)} className="text-sm px-3 py-1.5 rounded border bg-white text-red-700">Delete</button>
+            </div>
+          )}
+        </div>
+        {cat.description && <div className="text-sm text-gray-700 mb-2">{cat.description}</div>}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {entries.map((e) => (
+            <EntryCard key={e.id} e={e} fields={fields} />
+          ))}
+        </div>
+        {isAdmin && entries.length === 0 && <div className="text-sm text-gray-600">No entries yet.</div>}
+      </section>
+    );
+  }
+
   useEffect(() => { loadOffices(); }, []);
   useEffect(() => { loadBarangays(); }, []);
+
+  // Dynamic categories state
+  const [dynCats, setDynCats] = useState([]);
+  const [dynLoading, setDynLoading] = useState(false);
+  const [dynError, setDynError] = useState('');
+  const [catModal, setCatModal] = useState(null); // null | { mode:'add' } | { mode:'edit', cat }
+  const [catDelete, setCatDelete] = useState(null);
+  const [catDeleteStatus, setCatDeleteStatus] = useState({ kind: null, text: '' });
+  const [entryModal, setEntryModal] = useState(null); // null | { mode:'add', cat } | { mode:'edit', entry, cat }
+  const [entryDelete, setEntryDelete] = useState(null); // { entry }
+  const [entryDeleteStatus, setEntryDeleteStatus] = useState({ kind: null, text: '' });
+  const [entriesByCat, setEntriesByCat] = useState({}); // catId -> entries[]
+
+  async function loadDynCats() {
+    setDynLoading(true); setDynError('');
+    try {
+      const r = await fetch(`${API_BASE}/gov/categories`);
+      if (!r.ok) throw new Error('Failed loading categories');
+      const list = await r.json();
+      setDynCats(Array.isArray(list) ? list : []);
+    } catch (e) { setDynError(e.message || 'Error'); }
+    finally { setDynLoading(false); }
+  }
+  async function loadEntries(catId) {
+    try {
+      const r = await fetch(`${API_BASE}/gov/categories/${catId}/entries`);
+      if (!r.ok) throw new Error('Failed loading entries');
+      const list = await r.json();
+      setEntriesByCat(prev => ({ ...prev, [catId]: Array.isArray(list) ? list : [] }));
+    } catch {}
+  }
+  useEffect(() => {
+    loadDynCats();
+  }, []);
+  useEffect(() => {
+    (dynCats || []).forEach(c => { loadEntries(c.id); });
+  }, [dynCats]);
+
+  useEffect(() => { if (catDelete) setCatDeleteStatus({ kind: null, text: '' }); }, [catDelete]);
+  useEffect(() => { if (entryDelete) setEntryDeleteStatus({ kind: null, text: '' }); }, [entryDelete]);
 
   const canEdit = (ofc) => isAdmin || (!!user && user.role === 'officer' && myOfficeId && (Number(myOfficeId) === Number(ofc.id)));
 
@@ -56,7 +195,18 @@ export default function Government() {
   }
 
   async function handleCreate(fd) {
-    await fetch(`${API_BASE}/offices`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const r = await fetch(`${API_BASE}/offices`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    if (!r.ok) {
+      if (r.status === 409) {
+        let msg = 'An office with this name already exists.';
+        try {
+          const data = await r.json();
+          if (data && data.error) msg = data.error;
+        } catch {}
+        throw new Error(msg);
+      }
+      throw new Error('Failed to save office');
+    }
     await loadOffices();
   }
 
@@ -92,7 +242,17 @@ export default function Government() {
 
   async function handleCreateBrgy(brgyFd, officials) {
     const r = await fetch(`${API_BASE}/barangays`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: brgyFd });
-    if (!r.ok) return;
+    if (!r.ok) {
+      if (r.status === 409) {
+        let msg = 'A barangay with this name already exists.';
+        try {
+          const data = await r.json();
+          if (data && data.error) msg = data.error;
+        } catch {}
+        throw new Error(msg);
+      }
+      throw new Error('Failed to save barangay');
+    }
     const { id } = await r.json();
     if (Array.isArray(officials) && officials.length) {
       const fd = new FormData();
@@ -113,7 +273,7 @@ export default function Government() {
   }
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      <section id="officials">
+      <section id="officials" className="scroll-mt-20">
         <h2 className="text-xl font-semibold mb-3">Municipal Officials</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {officials.map((o)=> (
@@ -128,7 +288,109 @@ export default function Government() {
         </div>
       </section>
 
-      <section id="offices">
+      {/* Dynamic Government Categories */}
+      <section id="dynamic-categories">
+        {isAdmin && (
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold mb-3">Other Government Categories</h2>
+            <button onClick={()=>setCatModal({ mode:'add' })} className="text-sm px-3 py-1.5 rounded border bg-white">Add Category</button>
+          </div>
+        )}
+        {dynLoading && <div className="text-sm text-gray-600">Loading categories...</div>}
+        {dynError && <div className="text-sm text-red-600">{dynError}</div>}
+        <div className="space-y-8">
+          {(isAdmin ? dynCats : (dynCats || []).filter(c => (entriesByCat[c.id] || []).length > 0)).map((c) => (
+            <DynamicCategorySection key={c.id} cat={c} />
+          ))}
+          {isAdmin && (!dynCats || dynCats.length === 0) && <div className="text-sm text-gray-600">No additional categories.</div>}
+        </div>
+      </section>
+
+      {/* Category Modal */}
+      <Modal open={!!catModal} onClose={()=>setCatModal(null)} title={catModal?.mode === 'edit' ? 'Edit Category' : 'Add Category'}>
+        {catModal && (
+          <CategoryForm
+            category={catModal.mode === 'edit' ? catModal.cat : undefined}
+            onClose={()=>setCatModal(null)}
+            onSaved={()=>{ setCatModal(null); loadDynCats(); }}
+          />
+        )}
+      </Modal>
+
+      {/* Category Delete */}
+      <Modal open={!!catDelete} onClose={()=>setCatDelete(null)} title="Delete Category">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">Delete <span className="font-medium">{catDelete?.title}</span>? This will remove all its entries.</p>
+          {catDeleteStatus.kind ? (
+            <div className={`px-4 py-2 rounded-md text-sm ${catDeleteStatus.kind==='success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{catDeleteStatus.text}</div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={()=>setCatDelete(null)} className="px-4 py-2 rounded-md border">Cancel</button>
+              <button
+                type="button"
+                onClick={async ()=>{
+                  try {
+                    if (!catDelete) return;
+                    const r = await fetch(`${API_BASE}/gov/categories/${catDelete.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }});
+                    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || 'Failed to delete'); }
+                    setCatDeleteStatus({ kind: 'success', text: 'Deleted successfully.' });
+                    setTimeout(async ()=>{ setCatDeleteStatus({ kind: null, text: '' }); setCatDelete(null); await loadDynCats(); }, 1500);
+                  } catch (err) {
+                    setCatDeleteStatus({ kind: 'error', text: err.message || 'An error occurred.' });
+                    setTimeout(()=>setCatDeleteStatus({ kind: null, text: '' }), 2000);
+                  }
+                }}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >Delete</button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Entry Modal */}
+      <Modal open={!!entryModal} onClose={()=>setEntryModal(null)} title={entryModal?.mode === 'edit' ? 'Edit Entry' : 'Add Entry'}>
+        {entryModal && (
+          <EntryForm
+            category={entryModal.cat || dynCats.find(c=>c.id === (entryModal.entry?.category_id))}
+            entry={entryModal.mode === 'edit' ? entryModal.entry : undefined}
+            onClose={()=>setEntryModal(null)}
+            onSaved={()=>{ setEntryModal(null); const cid = (entryModal.cat?.id) || (entryModal.entry?.category_id); if (cid) loadEntries(cid); }}
+          />
+        )}
+      </Modal>
+
+      {/* Entry Delete */}
+      <Modal open={!!entryDelete} onClose={()=>setEntryDelete(null)} title="Delete Entry">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">Delete <span className="font-medium">{entryDelete?.title || 'this entry'}</span>?</p>
+          {entryDeleteStatus.kind ? (
+            <div className={`px-4 py-2 rounded-md text-sm ${entryDeleteStatus.kind==='success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{entryDeleteStatus.text}</div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={()=>setEntryDelete(null)} className="px-4 py-2 rounded-md border">Cancel</button>
+              <button
+                type="button"
+                onClick={async ()=>{
+                  try {
+                    if (!entryDelete) return;
+                    const r = await fetch(`${API_BASE}/gov/entries/${entryDelete.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }});
+                    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || 'Failed to delete'); }
+                    const cid = entryDelete.category_id;
+                    setEntryDeleteStatus({ kind: 'success', text: 'Deleted successfully.' });
+                    setTimeout(async ()=>{ setEntryDeleteStatus({ kind: null, text: '' }); setEntryDelete(null); if (cid) await loadEntries(cid); }, 1500);
+                  } catch (err) {
+                    setEntryDeleteStatus({ kind: 'error', text: err.message || 'An error occurred.' });
+                    setTimeout(()=>setEntryDeleteStatus({ kind: null, text: '' }), 2000);
+                  }
+                }}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >Delete</button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <section id="offices" className="scroll-mt-20">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold mb-3">Municipal Offices</h2>
           {isAdmin && (
@@ -169,13 +431,24 @@ export default function Government() {
 
         {/* Add Office Modal */}
         <Modal open={!!showAdd} onClose={()=>setShowAdd(false)} title="Add Office">
-          <OfficeForm onClose={()=>{ setShowAdd(false); }} onSubmit={handleCreate} submittingText="Create" />
+          <OfficeForm
+            onClose={()=>{ setShowAdd(false); }}
+            onSubmit={handleCreate}
+            submittingText="Create"
+            onError={(msg)=>setErrorDialog({ open: true, title: 'Office Error', message: msg, description: 'An office with the same name already exists. Please choose a unique name or edit the existing office.' })}
+          />
         </Modal>
 
         {/* Edit Office Modal */}
         <Modal open={!!showEdit} onClose={()=>setShowEdit(null)} title="Edit Office">
           {showEdit && (
-            <OfficeForm office={showEdit} onClose={()=>{ setShowEdit(null); }} onSubmit={(fd)=>handleUpdate(showEdit.id, fd)} submittingText="Save" />
+            <OfficeForm
+              office={showEdit}
+              onClose={()=>{ setShowEdit(null); }}
+              onSubmit={(fd)=>handleUpdate(showEdit.id, fd)}
+              submittingText="Save"
+              onError={(msg)=>setErrorDialog({ open: true, title: 'Office Error', message: msg, description: 'An office with the same name already exists. Please choose a unique name or edit the existing office.' })}
+            />
           )}
         </Modal>
 
@@ -191,7 +464,7 @@ export default function Government() {
         </Modal>
       </section>
 
-      <section id="barangays">
+      <section id="barangays" className="scroll-mt-20">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold mb-3">Barangays</h2>
           {isAdmin && (
@@ -227,13 +500,24 @@ export default function Government() {
 
         {/* Add Barangay Modal */}
         <Modal open={!!showAddBrgy} onClose={()=>setShowAddBrgy(false)} title="Add Barangay">
-          <BarangayForm onClose={()=>setShowAddBrgy(false)} onSubmit={(fd, officials)=>handleCreateBrgy(fd, officials)} submittingText="Create" />
+          <BarangayForm
+            onClose={()=>setShowAddBrgy(false)}
+            onSubmit={(fd, officials)=>handleCreateBrgy(fd, officials)}
+            submittingText="Create"
+            onError={(msg)=>setErrorDialog({ open: true, title: 'Barangay Error', message: msg, description: 'A barangay with the same name already exists. Please use a different name or update the existing barangay.' })}
+          />
         </Modal>
 
         {/* Edit Barangay Modal */}
         <Modal open={!!showEditBrgy} onClose={()=>setShowEditBrgy(null)} title="Edit Barangay">
           {showEditBrgy && (
-            <BarangayForm barangay={showEditBrgy} onClose={()=>setShowEditBrgy(null)} onSubmit={(fd, officials)=>handleUpdateBrgy(showEditBrgy.id, fd, officials)} submittingText="Save" />
+            <BarangayForm
+              barangay={showEditBrgy}
+              onClose={()=>setShowEditBrgy(null)}
+              onSubmit={(fd, officials)=>handleUpdateBrgy(showEditBrgy.id, fd, officials)}
+              submittingText="Save"
+              onError={(msg)=>setErrorDialog({ open: true, title: 'Barangay Error', message: msg, description: 'A barangay with the same name already exists. Please use a different name or update the existing barangay.' })}
+            />
           )}
         </Modal>
 
@@ -249,7 +533,7 @@ export default function Government() {
         </Modal>
       </section>
 
-      <section id="awards">
+      <section id="awards" className="scroll-mt-20">
         <h2 className="text-xl font-semibold mb-3">Awards & Achievements</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {awards.map((a,idx)=> (
@@ -280,11 +564,29 @@ export default function Government() {
           )}
         </dialog>
       </section>
+      {/* Error Modal */}
+      <Modal open={errorDialog.open} onClose={()=>setErrorDialog({ open: false, title: '', message: '', description: '' })} title={errorDialog.title || 'Error'}>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 rounded-full bg-red-100 p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-600"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59c.75 1.335-.213 2.99-1.742 2.99H3.48c-1.53 0-2.492-1.655-1.742-2.99L8.257 3.1zM11 14a1 1 0 10-2 0 1 1 0 002 0zm-.293-7.707a1 1 0 00-1.414 0l-.293.293v4.121a1 1 0 002 0V6.586l-.293-.293z" clipRule="evenodd"/></svg>
+            </div>
+            <div>
+              <div className="font-medium text-red-800">{errorDialog.title || 'Error'}</div>
+              <p className="mt-1 text-sm text-red-700">{errorDialog.message}</p>
+              {errorDialog.description && <p className="mt-2 text-xs text-red-600">{errorDialog.description}</p>}
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="button" onClick={()=>setErrorDialog({ open: false, title: '', message: '', description: '' })} className="px-4 py-2 rounded-md border">Close</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function BarangayForm({ barangay, onClose, onSubmit, submittingText }) {
+function BarangayForm({ barangay, onClose, onSubmit, submittingText, onError }) {
   const [name, setName] = useState(barangay?.name || '');
   const [description, setDescription] = useState(barangay?.description || '');
   const [imageFile, setImageFile] = useState(null);
@@ -311,6 +613,8 @@ function BarangayForm({ barangay, onClose, onSubmit, submittingText }) {
       if (imageFile) fd.append('image', imageFile);
       await onSubmit(fd, officials);
       onClose();
+    } catch (e) {
+      onError?.(e.message || 'Failed to save barangay');
     } finally {
       setSubmitting(false);
     }
@@ -399,7 +703,7 @@ function BarangayForm({ barangay, onClose, onSubmit, submittingText }) {
   );
 }
 
-function OfficeForm({ office, onClose, onSubmit, submittingText }) {
+function OfficeForm({ office, onClose, onSubmit, submittingText, onError }) {
   const [name, setName] = useState(office?.name || '');
   const [head, setHead] = useState(office?.head || '');
   const [location, setLocation] = useState(office?.location || '');
@@ -410,7 +714,6 @@ function OfficeForm({ office, onClose, onSubmit, submittingText }) {
   const [imageFile, setImageFile] = useState(null);
   const [headImageFile, setHeadImageFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -429,6 +732,8 @@ function OfficeForm({ office, onClose, onSubmit, submittingText }) {
       if (headImageFile) fd.append('headImage', headImageFile);
       await onSubmit(fd);
       onClose();
+    } catch (e) {
+      onError?.(e.message || 'Failed to save office');
     } finally {
       setSubmitting(false);
     }
