@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { avatarFor, ensureUser, anonymousAvatar, generateAnonymousName } from '../utils/user';
-import { addNotification } from '../utils/notifications';
-import { recordEngagement } from '../utils/engagements';
+import { useNavigate } from 'react-router-dom';
+import { avatarFor, anonymousAvatar, generateAnonymousName } from '../utils/user';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../config';
 
 function loadComments(key) {
   try {
@@ -19,69 +20,63 @@ function saveComments(key, data) {
 }
 
 export default function Comments({ threadId, title = 'Comments', ownerName = null, ownerUser = null, collapsedByDefault = true, pageSize = 8 }) {
+  const { user, token } = useAuth();
+  const navigate = useNavigate();
   const storageKey = `comments:${threadId}`;
-  const [items, setItems] = useState(() => loadComments(storageKey));
+  const [items, setItems] = useState([]);
   const [collapsed, setCollapsed] = useState(collapsedByDefault);
   const [text, setText] = useState('');
   // Use separate anonymous toggles for comment form and each reply form
   const [anonComment, setAnonComment] = useState(false);
   const [visibleCount, setVisibleCount] = useState(pageSize);
 
-  useEffect(() => { saveComments(storageKey, items); }, [items]);
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch(`${API_BASE}/comments?threadKey=${encodeURIComponent(threadId)}`);
+        if (!r.ok) return;
+        const list = await r.json();
+        setItems(Array.isArray(list) ? list : []);
+      } catch {}
+    }
+    load();
+  }, [threadId]);
 
   const topLevel = useMemo(() => items.filter(c => !c.parentId).sort((a,b)=> new Date(b.ts)-new Date(a.ts)), [items]);
   const totalCount = items.length;
 
-  const currentUser = ensureUser();
-
-  const postComment = (e) => {
+  const postComment = async (e) => {
     e.preventDefault();
+    if (!user) { navigate('/login'); return; }
     if (!text.trim()) return;
-    const author = anonComment ? generateAnonymousName() : (currentUser?.name || 'User');
-    const avatar = anonComment ? anonymousAvatar() : (currentUser?.avatar || avatarFor(author));
-    const c = {
-      id: Date.now().toString(),
-      author,
-      user: currentUser?.name || author,
-      avatar,
-      text: text.trim(),
-      ts: new Date().toISOString(),
-      parentId: null
-    };
-    setItems([c, ...items]);
-    setText('');
-    // Record engagement for current user regardless of anonymity
-    recordEngagement(currentUser.name, storageKey);
-    // Notify thread owner (e.g., post author) if provided and not the same as commenter
-    const targetUser = ownerUser || ownerName;
-    if (targetUser && targetUser !== (currentUser?.name || author)) {
-      addNotification(targetUser, { type: 'comment', message: `${author} commented on your post`, threadId });
-    }
+    try {
+      const r = await fetch(`${API_BASE}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ threadKey: threadId, text: text.trim(), isAnonymous: !!anonComment }),
+      });
+      if (!r.ok) return;
+      const created = await r.json();
+      setItems([created, ...items]);
+      setText('');
+    } catch {}
   };
 
-  const postReply = (parentId, replyTextLocal, setReplyTextLocal, setOpenLocal, useAnon) => {
+  const postReply = async (parentId, replyTextLocal, setReplyTextLocal, setOpenLocal, useAnon) => {
     const txt = (replyTextLocal || '').trim();
-    if (!txt) return;
-    const author = useAnon ? generateAnonymousName() : (currentUser?.name || 'User');
-    const avatar = useAnon ? anonymousAvatar() : (currentUser?.avatar || avatarFor(author));
-    const r = {
-      id: Date.now().toString(),
-      author,
-      user: currentUser?.name || author,
-      avatar,
-      text: txt,
-      ts: new Date().toISOString(),
-      parentId
-    };
-    setItems([r, ...items]);
-    setReplyTextLocal('');
-    setOpenLocal(false);
-    recordEngagement(currentUser.name, storageKey);
-    const parent = items.find(i => i.id === parentId);
-    const parentUser = parent?.user || parent?.author;
-    if (parentUser && parentUser !== (currentUser?.name || author)) {
-      addNotification(parentUser, { type: 'reply', message: `${author} replied to your comment`, threadId });
-    }
+    if (!txt || !user) { if (!user) navigate('/login'); return; }
+    try {
+      const r = await fetch(`${API_BASE}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ threadKey: threadId, text: txt, parentId, isAnonymous: !!useAnon }),
+      });
+      if (!r.ok) return;
+      const created = await r.json();
+      setItems([created, ...items]);
+      setReplyTextLocal('');
+      setOpenLocal(false);
+    } catch {}
   };
 
   const repliesOf = (id) => items.filter(c => c.parentId === id).sort((a,b)=> new Date(a.ts)-new Date(b.ts));
@@ -157,7 +152,7 @@ export default function Comments({ threadId, title = 'Comments', ownerName = nul
         <>
           <form onSubmit={postComment} className="space-y-2 border rounded-md p-3 mt-2">
             <div className="flex items-center gap-2">
-              <img src={anonComment ? anonymousAvatar() : (currentUser?.avatar || avatarFor(currentUser?.name))} alt="" className="w-8 h-8 rounded-full object-cover" />
+              <img src={anonComment ? anonymousAvatar() : (user?.profileImageUrl || avatarFor(user?.fullName || user?.email))} alt="" className="w-8 h-8 rounded-full object-cover" />
               <input
                 className="flex-1 border rounded-md px-3 py-2"
                 placeholder="Write a comment..."
@@ -172,7 +167,7 @@ export default function Comments({ threadId, title = 'Comments', ownerName = nul
                   Anonymous
                 </label>
               </div>
-              <button className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700">Comment</button>
+              <button disabled={!user} className={`px-3 py-1.5 rounded-md ${!user ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{user ? 'Comment' : 'Log in to comment'}</button>
             </div>
           </form>
 

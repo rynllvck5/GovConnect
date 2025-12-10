@@ -1,27 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Comments from '../components/Comments';
-import { ensureUser, avatarFor, anonymousAvatar, generateAnonymousName } from '../utils/user';
-import { getEngagedThreads } from '../utils/engagements';
+import { avatarFor } from '../utils/user';
 import { getNotifications, markAllRead, unreadCount } from '../utils/notifications';
+import { getEngagedThreads } from '../utils/engagements';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../config';
 
-const STORAGE_KEY = 'forum:posts';
-
-function loadPosts() {
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    return s ? JSON.parse(s) : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePosts(list) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch {}
-}
+// Forum posts are now stored in the backend
 
 export default function Forum() {
-  const [posts, setPosts] = useState(loadPosts);
+  const { user, token } = useAuth();
+  const [posts, setPosts] = useState([]);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [category, setCategory] = useState('Concern');
@@ -36,8 +26,19 @@ export default function Forum() {
   const locationHook = useLocation();
   const navigate = useNavigate();
   const [tab, setTab] = useState('feed'); // feed | mine | engaged | notifications
+  const displayName = (user && (user.fullName || user.email)) || 'You';
 
-  useEffect(() => { savePosts(posts); }, [posts]);
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch(`${API_BASE}/forum/posts`);
+        if (!r.ok) return;
+        const list = await r.json();
+        setPosts(Array.isArray(list) ? list : []);
+      } catch {}
+    }
+    load();
+  }, []);
 
   // hash-based tab routing inside forum
   useEffect(() => {
@@ -55,25 +56,23 @@ export default function Forum() {
       .sort((a,b)=>b.ts-a.ts);
   }, [posts, q]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
-    const current = ensureUser();
-    const post = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      message: message.trim(),
-      category,
-      location: location.trim(),
-      author: anon ? generateAnonymousName() : (current.name || 'User'),
-      avatar: anon ? anonymousAvatar() : (current.avatar || avatarFor(current.name)),
-      user: current.name || 'User',
-      images,
-      ts: Date.now()
-    };
-    setPosts([post, ...posts]);
-    setTitle(''); setMessage(''); setLocation(''); setAnon(true); setCategory('Concern'); setImages([]);
-    if (dialogRef.current?.close) dialogRef.current.close();
+    if (!user) { navigate('/login'); return; }
+    try {
+      const r = await fetch(`${API_BASE}/forum/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: title.trim(), message: message.trim(), category, location: location.trim(), isAnonymous: !!anon, images }),
+      });
+      if (!r.ok) return;
+      const listRes = await fetch(`${API_BASE}/forum/posts`);
+      const list = listRes.ok ? await listRes.json() : [];
+      setPosts(Array.isArray(list) ? list : []);
+      setTitle(''); setMessage(''); setLocation(''); setAnon(true); setCategory('Concern'); setImages([]);
+      if (dialogRef.current?.close) dialogRef.current.close();
+    } catch {}
   };
 
   const onPickImages = async (e) => {
@@ -102,7 +101,7 @@ export default function Forum() {
         <button onClick={()=>{ setTab('mine'); window.location.hash = '#mine'; }} className={`px-3 py-1 rounded ${tab==='mine'?'bg-blue-600 text-white':'border'}`}>My Posts</button>
         <button onClick={()=>{ setTab('engaged'); window.location.hash = '#engaged'; }} className={`px-3 py-1 rounded ${tab==='engaged'?'bg-blue-600 text-white':'border'}`}>Engaged</button>
         <button onClick={()=>{ setTab('notifications'); window.location.hash = '#notifications'; }} className={`px-3 py-1 rounded ${tab==='notifications'?'bg-blue-600 text-white':'border'}`}>
-          Notifications {unreadCount(ensureUser().name) > 0 && <span className="ml-1 inline-block bg-red-600 text-white px-1 rounded">{unreadCount(ensureUser().name)}</span>}
+          Notifications {unreadCount(displayName) > 0 && <span className="ml-1 inline-block bg-red-600 text-white px-1 rounded">{unreadCount(displayName)}</span>}
         </button>
       </div>
 
@@ -110,7 +109,7 @@ export default function Forum() {
 
       <section className={tab==='feed' ? '' : 'hidden'}>
         <div className="flex justify-end">
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700" onClick={()=>dialogRef.current?.showModal()}>Create Post</button>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700" onClick={()=>{ if (!user) navigate('/login'); else dialogRef.current?.showModal(); }}>Create Post</button>
         </div>
         <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
           <form method="dialog">
@@ -198,7 +197,8 @@ export default function Forum() {
       {/* My Posts */}
       <section className={`${tab==='mine' ? '' : 'hidden'} space-y-3`}>
         {(() => {
-          const mine = posts.filter(p => (p.user || p.author) === ensureUser().name);
+          if (!user) return (<div className="text-sm text-gray-600">Log in to view your posts.</div>);
+          const mine = posts.filter(p => p.user_id === user.id);
           if (mine.length === 0) {
             return (
               <article className="border rounded-md p-4 bg-white">
@@ -222,9 +222,9 @@ export default function Forum() {
       {/* Engaged */}
       <section className={`${tab==='engaged' ? '' : 'hidden'} space-y-3`}>
         {(() => {
-          const threads = getEngagedThreads(ensureUser().name) || [];
+          const threads = getEngagedThreads(displayName) || [];
           const ids = new Set(threads.filter(t=>t.startsWith('comments:forum:post:')).map(t=>t.replace('comments:forum:post:','')));
-          const engaged = posts.filter(p => ids.has(p.id) && (p.user || p.author) !== ensureUser().name);
+          const engaged = posts.filter(p => ids.has(p.id) && (p.user || p.author) !== displayName);
           if (engaged.length === 0) return (<div className="text-sm text-gray-600">No engaged posts yet.</div>);
           return engaged.map(p => (
             <article key={p.id} className="border rounded-md p-4 bg-white">
@@ -239,11 +239,11 @@ export default function Forum() {
       {/* Notifications */}
       <section className={`${tab==='notifications' ? '' : 'hidden'} space-y-3`}>
         {(() => {
-          const list = getNotifications(ensureUser().name) || [];
+          const list = getNotifications(displayName) || [];
           const renderList = (arr) => (
             <>
               <div className="flex justify-end">
-                <button onClick={()=>{ markAllRead(ensureUser().name); window.location.reload(); }} className="text-sm px-3 py-1.5 rounded border">Mark all read</button>
+                <button onClick={()=>{ markAllRead(displayName); window.location.reload(); }} className="text-sm px-3 py-1.5 rounded border">Mark all read</button>
               </div>
               {arr.map(n => (
                 <div key={n.id} className={`border rounded-md p-3 ${n.read ? 'bg-white' : 'bg-blue-50'}`}>
