@@ -45,8 +45,11 @@ export default function Header() {
             <NavLink to="/services" className={navLinkClass}>Services</NavLink>
             <NavLink to="/forms" className={navLinkClass}>Forms</NavLink>
             <div className="relative group">
-              <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 cursor-pointer select-none">Government</span>
-              <div className="absolute right-0 mt-1 w-72 bg-white border rounded-md shadow-lg p-2 z-50 hidden group-hover:block">
+              <Link to="/government#gov-top" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 cursor-pointer select-none inline-flex items-center gap-1">
+                <span>Government</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-500 group-hover:text-blue-700"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
+              </Link>
+              <div className="absolute left-0 mt-1 w-72 bg-white border rounded-md shadow-lg p-2 z-50 hidden group-hover:block">
                 <div className="text-xs uppercase text-gray-500 px-2 py-1">Quick Links</div>
                 <Link to="/government#officials" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Officials</Link>
                 <Link to="/government#offices" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Municipal Offices</Link>

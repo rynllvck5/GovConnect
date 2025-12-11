@@ -145,6 +145,55 @@ async function run() {
   await query('CREATE INDEX IF NOT EXISTS idx_gov_entries_category_id ON gov_entries(category_id)');
   await query('ALTER TABLE gov_entries ADD COLUMN IF NOT EXISTS manager_user_id INTEGER REFERENCES users(id)');
 
+  // Municipal officials (for Government section)
+  await query(`CREATE TABLE IF NOT EXISTS municipal_officials (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    position TEXT NOT NULL,
+    image_url TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE INDEX IF NOT EXISTS idx_municipal_officials_sort ON municipal_officials (sort_order)');
+  await query('ALTER TABLE municipal_officials ADD COLUMN IF NOT EXISTS image_url TEXT');
+  await query('ALTER TABLE municipal_officials ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0');
+  await query("ALTER TABLE municipal_officials ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW()");
+  await query("ALTER TABLE municipal_officials ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()");
+
+  // Downloadable Forms (separate from services forms array)
+  await query(`CREATE TABLE IF NOT EXISTS downloadable_forms (
+    id SERIAL PRIMARY KEY,
+    office_id INTEGER NOT NULL REFERENCES offices(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    file_url TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE INDEX IF NOT EXISTS idx_downloadable_forms_office_id ON downloadable_forms(office_id)');
+
+  await query(`CREATE TABLE IF NOT EXISTS downloadable_form_files (
+    id SERIAL PRIMARY KEY,
+    form_id INTEGER NOT NULL REFERENCES downloadable_forms(id) ON DELETE CASCADE,
+    file_url TEXT NOT NULL,
+    original_name TEXT,
+    mime_type TEXT,
+    size BIGINT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE INDEX IF NOT EXISTS idx_downloadable_form_files_form_id ON downloadable_form_files(form_id)');
+ 
+  await query(`
+    INSERT INTO downloadable_form_files(form_id, file_url)
+    SELECT f.id, f.file_url
+    FROM downloadable_forms f
+    WHERE f.file_url IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM downloadable_form_files d WHERE d.form_id = f.id
+      )
+  `);
+
   await query(`CREATE TABLE IF NOT EXISTS users(
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,

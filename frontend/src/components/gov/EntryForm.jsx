@@ -4,7 +4,8 @@ import { API_BASE, API_ORIGIN } from '../../config';
 
 export default function EntryForm({ category, entry, onClose, onSaved }) {
   const isEdit = !!entry;
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
   const fields = useMemo(() => Array.isArray(category?.schema_json?.fields) ? category.schema_json.fields : [], [category]);
   const [title, setTitle] = useState(entry?.title || '');
   const [values, setValues] = useState(() => ({ ...(entry?.content_json || {}) }));
@@ -15,6 +16,7 @@ export default function EntryForm({ category, entry, onClose, onSaved }) {
   const [managerUserId, setManagerUserId] = useState(entry?.manager_user_id || null);
 
   useEffect(() => {
+    if (!isAdmin) return;
     let alive = true;
     (async () => {
       try {
@@ -27,7 +29,7 @@ export default function EntryForm({ category, entry, onClose, onSaved }) {
       } catch {}
     })();
     return () => { alive = false; };
-  }, [token]);
+  }, [token, isAdmin]);
   
   
 
@@ -53,7 +55,7 @@ export default function EntryForm({ category, entry, onClose, onSaved }) {
           if (Array.isArray(arr)) arr.forEach(file => fd.append(f.key, file));
         }
       }
-      if (managerUserId != null) fd.append('managerUserId', String(managerUserId || ''));
+      if (isAdmin && managerUserId != null) fd.append('managerUserId', String(managerUserId || ''));
       fd.append('content', JSON.stringify(content));
       const url = isEdit ? `${API_BASE}/gov/entries/${entry.id}` : `${API_BASE}/gov/categories/${category.id}/entries`;
       const method = isEdit ? 'PUT' : 'POST';
@@ -98,15 +100,17 @@ export default function EntryForm({ category, entry, onClose, onSaved }) {
         <label className="block text-sm text-gray-700">Title</label>
         <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Optional title" />
       </div>
-      <div>
-        <label className="block text-sm text-gray-700">Managed by (Officer)</label>
-        <select value={managerUserId || ''} onChange={(e)=>setManagerUserId(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md px-3 py-2 text-sm">
-          <option value="">— None —</option>
-          {officers.map(o => (
-            <option key={o.id} value={o.id}>{o.full_name}{o.office_id ? '' : ''}</option>
-          ))}
-        </select>
-      </div>
+      {isAdmin && (
+        <div>
+          <label className="block text-sm text-gray-700">Managed by (Officer)</label>
+          <select value={managerUserId || ''} onChange={(e)=>setManagerUserId(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md px-3 py-2 text-sm">
+            <option value="">— None —</option>
+            {officers.map(o => (
+              <option key={o.id} value={o.id}>{o.full_name}{o.office_id ? '' : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {fields.map(f => (
         <div key={f.key}>
           <label className="block text-sm text-gray-700">{f.label || f.key}</label>

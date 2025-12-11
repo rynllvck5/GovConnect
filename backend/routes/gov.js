@@ -5,7 +5,7 @@ const multer = require('multer');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
-const { permit } = require('../middleware/authorize');
+const { permit, canManageGovEntry } = require('../middleware/authorize');
 
 const router = express.Router();
 
@@ -232,7 +232,7 @@ router.post(
 router.put(
   '/entries/:id',
   requireAuth,
-  permit(['superadmin', 'admin']),
+  canManageGovEntry,
   upload.any(),
   async (req, res) => {
     const id = Number(req.params.id);
@@ -277,11 +277,16 @@ router.put(
     const published = req.body.published !== undefined ? !!req.body.published : row.published;
     const sortOrder = req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : row.sort_order;
     let managerUserId = row.manager_user_id;
-    if (req.body.managerUserId !== undefined) managerUserId = req.body.managerUserId ? Number(req.body.managerUserId) : null;
-    else if (req.body.manager_user_id !== undefined) managerUserId = req.body.manager_user_id ? Number(req.body.manager_user_id) : null;
-    if (managerUserId) {
-      const chk = await query('SELECT 1 FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=$1 AND r.name=$2', [managerUserId, 'officer']);
-      if (!chk.rowCount) return res.status(400).json({ error: 'Manager must be an officer user.' });
+    if (req.user.role === 'officer') {
+      // Officers can edit only entries they manage; do not allow changing manager
+      managerUserId = row.manager_user_id;
+    } else {
+      if (req.body.managerUserId !== undefined) managerUserId = req.body.managerUserId ? Number(req.body.managerUserId) : null;
+      else if (req.body.manager_user_id !== undefined) managerUserId = req.body.manager_user_id ? Number(req.body.manager_user_id) : null;
+      if (managerUserId) {
+        const chk = await query('SELECT 1 FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=$1 AND r.name=$2', [managerUserId, 'officer']);
+        if (!chk.rowCount) return res.status(400).json({ error: 'Manager must be an officer user.' });
+      }
     }
     await query(
       `UPDATE gov_entries SET title=$1, content_json=$2::jsonb, published=$3, sort_order=$4, manager_user_id=$5, updated_at=NOW() WHERE id=$6` ,
@@ -290,6 +295,67 @@ router.put(
     res.json({ ok: true });
   }
 );
+
+// Municipal Officials CRUD
+router.get('/municipal-officials', async (req, res) => {
+  const { rows } = await query('SELECT id, name, position, image_url, sort_order FROM municipal_officials ORDER BY sort_order ASC, id ASC');
+  res.json(rows);
+});
+
+router.post(
+  '/municipal-officials',
+  requireAuth,
+  permit(['superadmin', 'admin']),
+  upload.single('image'),
+  body('name').isString().isLength({ min: 2 }),
+  body('position').isString().isLength({ min: 2 }),
+  body('sortOrder').optional().isInt(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const name = String(req.body.name).trim();
+    const position = String(req.body.position).trim();
+    const sortOrder = req.body.sortOrder != null ? Number(req.body.sortOrder) : 0;
+    const imageUrl = req.file ? `/uploads/gov/${req.file.filename}` : null;
+    const { rows } = await query(
+      'INSERT INTO municipal_officials(name, position, image_url, sort_order) VALUES($1,$2,$3,$4) RETURNING id',
+      [name, position, imageUrl, sortOrder]
+    );
+    res.status(201).json({ id: rows[0].id });
+  }
+);
+
+router.put(
+  '/municipal-officials/:id',
+  requireAuth,
+  permit(['superadmin', 'admin']),
+  upload.single('image'),
+  body('name').optional().isString().isLength({ min: 2 }),
+  body('position').optional().isString().isLength({ min: 2 }),
+  body('sortOrder').optional().isInt(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const id = Number(req.params.id);
+    const fields = [];
+    const values = [];
+    let i = 1;
+    if (req.body.name) { fields.push(`name=$${i++}`); values.push(String(req.body.name).trim()); }
+    if (req.body.position) { fields.push(`position=$${i++}`); values.push(String(req.body.position).trim()); }
+    if (req.body.sortOrder !== undefined) { fields.push(`sort_order=$${i++}`); values.push(Number(req.body.sortOrder) || 0); }
+    if (req.file) { fields.push(`image_url=$${i++}`); values.push(`/uploads/gov/${req.file.filename}`); }
+    if (!fields.length) return res.status(400).json({ error: 'No changes' });
+    values.push(id);
+    await query(`UPDATE municipal_officials SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${i}`, values);
+    res.json({ ok: true });
+  }
+);
+
+router.delete('/municipal-officials/:id', requireAuth, permit(['superadmin', 'admin']), async (req, res) => {
+  const id = Number(req.params.id);
+  await query('DELETE FROM municipal_officials WHERE id=$1', [id]);
+  res.json({ ok: true });
+});
 
 router.delete('/entries/:id', requireAuth, permit(['superadmin', 'admin']), async (req, res) => {
   const id = Number(req.params.id);

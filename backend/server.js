@@ -13,6 +13,7 @@ const commentRoutes = require('./routes/comments');
 const profileRoutes = require('./routes/profile');
 const servicesRoutes = require('./routes/services');
 const govRoutes = require('./routes/gov');
+const formsRoutes = require('./routes/forms');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -56,6 +57,7 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/gov', govRoutes);
+app.use('/api/forms', formsRoutes);
 
 // Test route
 app.get('/api', (req, res) => {

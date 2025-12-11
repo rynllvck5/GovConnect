@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import officials from '../data/officials';
 // import barangays from '../data/barangays';
 import awards from '../data/awards';
 import { Link, useLocation } from 'react-router-dom';
@@ -15,6 +14,7 @@ export default function Government() {
   const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
   const myOfficeId = user?.officeId || user?.office_id || null;
   const myBarangayId = user?.barangayId || user?.barangay_id || null;
+  const myUserId = user?.id || user?.userId || null;
   const [selectedAward, setSelectedAward] = useState(null);
   const [offices, setOffices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,6 +40,24 @@ export default function Government() {
       setOffices(Array.isArray(list) ? list : []);
     } catch(e) { setError(e.message || 'Error'); }
     finally { setLoading(false); }
+  }
+
+  async function handleCreateOfficial(fd) {
+    const r = await fetch(`${API_BASE}/gov/municipal-officials`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.error || 'Failed to save official');
+    }
+    await loadMunicipalOfficials();
+  }
+
+  async function handleUpdateOfficial(id, fd) {
+    const r = await fetch(`${API_BASE}/gov/municipal-officials/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.error || 'Failed to update official');
+    }
+    await loadMunicipalOfficials();
   }
 
   // Anchor scrolling support
@@ -69,14 +87,15 @@ export default function Government() {
 
   function EntryCard({ e, fields }) {
     const [expanded, setExpanded] = useState(false);
+    const canEditEntry = isAdmin || (!!user && user.role === 'officer' && myUserId && Number(myUserId) === Number(e.manager_user_id));
     return (
       <div className="border rounded-md p-4 bg-white relative">
         <div className="flex items-start justify-between">
           <div className="font-medium">{e.title || '—'}</div>
-          {isAdmin && (
+          {(isAdmin || canEditEntry) && (
             <div className="flex gap-1">
               <button onClick={()=>setEntryModal({ mode:'edit', entry: e, cat: dynCats.find(c=>c.id===e.category_id) })} className="text-xs px-2 py-1 rounded bg-yellow-500 text-white">Edit</button>
-              <button onClick={()=>setEntryDelete(e)} className="text-xs px-2 py-1 rounded bg-red-600 text-white">Delete</button>
+              {isAdmin && <button onClick={()=>setEntryDelete(e)} className="text-xs px-2 py-1 rounded bg-red-600 text-white">Delete</button>}
             </div>
           )}
         </div>
@@ -152,6 +171,13 @@ export default function Government() {
   const [entryDelete, setEntryDelete] = useState(null); // { entry }
   const [entryDeleteStatus, setEntryDeleteStatus] = useState({ kind: null, text: '' });
   const [entriesByCat, setEntriesByCat] = useState({}); // catId -> entries[]
+  // Municipal Officials (dynamic)
+  const [moList, setMoList] = useState([]);
+  const [moLoading, setMoLoading] = useState(false);
+  const [moError, setMoError] = useState('');
+  const [showAddMO, setShowAddMO] = useState(false);
+  const [showEditMO, setShowEditMO] = useState(null); // item or null
+  const [deleteMO, setDeleteMO] = useState(null);
 
   async function loadDynCats() {
     setDynLoading(true); setDynError('');
@@ -171,12 +197,23 @@ export default function Government() {
       setEntriesByCat(prev => ({ ...prev, [catId]: Array.isArray(list) ? list : [] }));
     } catch {}
   }
+  async function loadMunicipalOfficials() {
+    setMoLoading(true); setMoError('');
+    try {
+      const r = await fetch(`${API_BASE}/gov/municipal-officials`);
+      if (!r.ok) throw new Error('Failed loading municipal officials');
+      const list = await r.json();
+      setMoList(Array.isArray(list) ? list : []);
+    } catch (e) { setMoError(e.message || 'Error'); }
+    finally { setMoLoading(false); }
+  }
   useEffect(() => {
     loadDynCats();
   }, []);
   useEffect(() => {
     (dynCats || []).forEach(c => { loadEntries(c.id); });
   }, [dynCats]);
+  useEffect(() => { loadMunicipalOfficials(); }, []);
 
   useEffect(() => { if (catDelete) setCatDeleteStatus({ kind: null, text: '' }); }, [catDelete]);
   useEffect(() => { if (entryDelete) setEntryDeleteStatus({ kind: null, text: '' }); }, [entryDelete]);
@@ -273,20 +310,39 @@ export default function Government() {
   }
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+      <div id="gov-top" />
       <section id="officials" className="scroll-mt-20">
-        <h2 className="text-xl font-semibold mb-3">Municipal Officials</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold mb-3">Municipal Officials</h2>
+          {isAdmin && (
+            <button onClick={()=>setShowAddMO(true)} className="text-sm px-3 py-1.5 rounded border bg-white">Add Official</button>
+          )}
+        </div>
+        {moLoading && <div className="text-sm text-gray-600">Loading officials...</div>}
+        {moError && <div className="text-sm text-red-600">{moError}</div>}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {officials.map((o)=> (
-            <div key={o.position} className="border rounded-md p-4 bg-white flex items-center gap-3">
-              <img src={`https://i.pravatar.cc/96?u=${encodeURIComponent(o.position)}`} alt="" className="w-14 h-14 rounded-full object-cover" />
-              <div>
+          {moList.map((o)=> (
+            <div key={o.id} className="border rounded-md p-4 bg-white flex items-center gap-3">
+              <img src={o.image_url ? `${API_ORIGIN}${o.image_url}` : `https://i.pravatar.cc/96?u=${encodeURIComponent(o.position || o.name || 'official')}`} alt="" className="w-14 h-14 rounded-full object-cover" />
+              <div className="flex-1">
                 <div className="font-medium">{o.name || '—'}</div>
                 <div className="text-sm text-gray-600">{o.position}</div>
               </div>
+              {isAdmin && (
+                <div className="flex items-center gap-1">
+                  <button onClick={()=>setShowEditMO(o)} title="Edit" className="text-xs px-2 py-1 rounded bg-yellow-500 text-white">Edit</button>
+                  <button onClick={()=>setDeleteMO(o)} title="Delete" className="text-xs px-2 py-1 rounded bg-red-600 text-white">Delete</button>
+                </div>
+              )}
             </div>
           ))}
+          {!moLoading && (!moList || moList.length === 0) && (
+            <div className="text-sm text-gray-600">No officials added yet.</div>
+          )}
         </div>
       </section>
+
+      <div className="my-8 border-t-2 border-gray-300" />
 
       {/* Dynamic Government Categories */}
       <section id="dynamic-categories">
@@ -299,8 +355,11 @@ export default function Government() {
         {dynLoading && <div className="text-sm text-gray-600">Loading categories...</div>}
         {dynError && <div className="text-sm text-red-600">{dynError}</div>}
         <div className="space-y-8">
-          {(isAdmin ? dynCats : (dynCats || []).filter(c => (entriesByCat[c.id] || []).length > 0)).map((c) => (
-            <DynamicCategorySection key={c.id} cat={c} />
+          {(isAdmin ? dynCats : (dynCats || []).filter(c => (entriesByCat[c.id] || []).length > 0)).map((c, idx) => (
+            <React.Fragment key={c.id}>
+              {idx > 0 && <div className="my-8 border-t-2 border-gray-300" />}
+              <DynamicCategorySection cat={c} />
+            </React.Fragment>
           ))}
           {isAdmin && (!dynCats || dynCats.length === 0) && <div className="text-sm text-gray-600">No additional categories.</div>}
         </div>
@@ -315,6 +374,44 @@ export default function Government() {
             onSaved={()=>{ setCatModal(null); loadDynCats(); }}
           />
         )}
+      </Modal>
+
+      <div className="my-8 border-t-2 border-gray-300" />
+
+      {/* Municipal Official Add */}
+      <Modal open={!!showAddMO} onClose={()=>setShowAddMO(false)} title="Add Municipal Official">
+        {showAddMO && (
+          <MunicipalOfficialForm
+            onClose={()=>setShowAddMO(false)}
+            onSubmit={async (fd)=>{ await handleCreateOfficial(fd); setShowAddMO(false); }}
+            submittingText="Create"
+            onError={(msg)=>setErrorDialog({ open: true, title: 'Official Error', message: msg })}
+          />
+        )}
+      </Modal>
+
+      {/* Municipal Official Edit */}
+      <Modal open={!!showEditMO} onClose={()=>setShowEditMO(null)} title="Edit Municipal Official">
+        {showEditMO && (
+          <MunicipalOfficialForm
+            official={showEditMO}
+            onClose={()=>setShowEditMO(null)}
+            onSubmit={async (fd)=>{ await handleUpdateOfficial(showEditMO.id, fd); setShowEditMO(null); }}
+            submittingText="Save"
+            onError={(msg)=>setErrorDialog({ open: true, title: 'Official Error', message: msg })}
+          />
+        )}
+      </Modal>
+
+      {/* Municipal Official Delete */}
+      <Modal open={!!deleteMO} onClose={()=>setDeleteMO(null)} title="Delete Municipal Official">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">Delete <span className="font-medium">{deleteMO?.name}</span>?</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={()=>setDeleteMO(null)} className="px-4 py-2 rounded-md border">Cancel</button>
+            <button type="button" onClick={async ()=>{ if (!deleteMO) return; await fetch(`${API_BASE}/gov/municipal-officials/${deleteMO.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); setDeleteMO(null); await loadMunicipalOfficials(); }} className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700">Delete</button>
+          </div>
+        </div>
       </Modal>
 
       {/* Category Delete */}
@@ -390,6 +487,8 @@ export default function Government() {
         </div>
       </Modal>
 
+      <div className="my-8 border-t-2 border-gray-300" />
+
       <section id="offices" className="scroll-mt-20">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold mb-3">Municipal Offices</h2>
@@ -464,6 +563,8 @@ export default function Government() {
         </Modal>
       </section>
 
+      <div className="my-8 border-t-2 border-gray-300" />
+
       <section id="barangays" className="scroll-mt-20">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold mb-3">Barangays</h2>
@@ -532,6 +633,8 @@ export default function Government() {
           </div>
         </Modal>
       </section>
+
+      <div className="my-8 border-t-2 border-gray-300" />
 
       <section id="awards" className="scroll-mt-20">
         <h2 className="text-xl font-semibold mb-3">Awards & Achievements</h2>
@@ -812,6 +915,65 @@ function OfficeForm({ office, onClose, onSubmit, submittingText, onError }) {
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border">Cancel</button>
         <button disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">{submitting ? 'Saving...' : submittingText}</button>
+      </div>
+    </form>
+  );
+}
+
+function MunicipalOfficialForm({ official, onClose, onSubmit, submittingText, onError }) {
+  const [name, setName] = useState(official?.name || '');
+  const [position, setPosition] = useState(official?.position || '');
+  const [imageFile, setImageFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      if (!official || (name && name !== official.name)) fd.append('name', name.trim());
+      if (!official || (position && position !== official.position)) fd.append('position', position.trim());
+      if (imageFile) fd.append('image', imageFile);
+      await onSubmit(fd);
+      onClose?.();
+    } catch (e) {
+      onError?.(e.message || 'Failed to save official');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 p-1 sm:p-2">
+      <div>
+        <label className="block text-sm text-gray-700">Name</label>
+        <input value={name} onChange={(e)=>setName(e.target.value)} className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Hon. John Doe" required />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-700">Position</label>
+        <input value={position} onChange={(e)=>setPosition(e.target.value)} className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Mayor" required />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-700">Photo</label>
+        <div className="mt-1 flex items-center gap-3">
+          <div className="w-16 h-16 rounded-full bg-gray-100 border overflow-hidden flex items-center justify-center">
+            {imageFile ? (
+              <img alt="preview" src={URL.createObjectURL(imageFile)} className="w-full h-full object-cover" />
+            ) : official?.image_url ? (
+              <img alt="official" src={`${API_ORIGIN}${official.image_url}`} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[10px] text-gray-400">No photo</span>
+            )}
+          </div>
+          <div>
+            <input id="mo-image" type="file" accept="image/*" onChange={(e)=>setImageFile(e.target.files?.[0] || null)} className="sr-only" />
+            <label htmlFor="mo-image" className="inline-flex items-center px-3 py-2 rounded-md border text-sm bg-white hover:bg-gray-50 cursor-pointer">Choose File</label>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border">Cancel</button>
+        <button disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">{submitting ? 'Saving...' : (submittingText || 'Save')}</button>
       </div>
     </form>
   );
