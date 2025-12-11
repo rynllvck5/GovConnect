@@ -5,7 +5,7 @@
 -- Dumped from database version 17.5
 -- Dumped by pg_dump version 17.5
 
--- Started on 2025-12-11 00:57:09
+-- Started on 2025-12-12 02:06:49
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -57,7 +57,7 @@ CREATE SEQUENCE public.barangay_officials_id_seq
 ALTER SEQUENCE public.barangay_officials_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5039 (class 0 OID 0)
+-- TOC entry 5078 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: barangay_officials_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -97,7 +97,7 @@ CREATE SEQUENCE public.barangays_id_seq
 ALTER SEQUENCE public.barangays_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5040 (class 0 OID 0)
+-- TOC entry 5079 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: barangays_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -140,12 +140,98 @@ CREATE SEQUENCE public.comments_id_seq
 ALTER SEQUENCE public.comments_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5041 (class 0 OID 0)
+-- TOC entry 5080 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: comments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.comments_id_seq OWNED BY public.comments.id;
+
+
+--
+-- TOC entry 244 (class 1259 OID 33666)
+-- Name: downloadable_form_files; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.downloadable_form_files (
+    id integer NOT NULL,
+    form_id integer NOT NULL,
+    file_url text NOT NULL,
+    original_name text,
+    mime_type text,
+    size bigint,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.downloadable_form_files OWNER TO postgres;
+
+--
+-- TOC entry 243 (class 1259 OID 33665)
+-- Name: downloadable_form_files_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.downloadable_form_files_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.downloadable_form_files_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5081 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: downloadable_form_files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.downloadable_form_files_id_seq OWNED BY public.downloadable_form_files.id;
+
+
+--
+-- TOC entry 242 (class 1259 OID 33649)
+-- Name: downloadable_forms; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.downloadable_forms (
+    id integer NOT NULL,
+    office_id integer NOT NULL,
+    title text NOT NULL,
+    description text,
+    file_url text NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.downloadable_forms OWNER TO postgres;
+
+--
+-- TOC entry 241 (class 1259 OID 33648)
+-- Name: downloadable_forms_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.downloadable_forms_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.downloadable_forms_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5082 (class 0 OID 0)
+-- Dependencies: 241
+-- Name: downloadable_forms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.downloadable_forms_id_seq OWNED BY public.downloadable_forms.id;
 
 
 --
@@ -180,7 +266,7 @@ CREATE SEQUENCE public.forum_post_images_id_seq
 ALTER SEQUENCE public.forum_post_images_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5042 (class 0 OID 0)
+-- TOC entry 5083 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: forum_post_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -224,7 +310,7 @@ CREATE SEQUENCE public.forum_posts_id_seq
 ALTER SEQUENCE public.forum_posts_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5043 (class 0 OID 0)
+-- TOC entry 5084 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: forum_posts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -270,7 +356,7 @@ CREATE SEQUENCE public.gov_categories_id_seq
 ALTER SEQUENCE public.gov_categories_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5044 (class 0 OID 0)
+-- TOC entry 5085 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: gov_categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -291,7 +377,8 @@ CREATE TABLE public.gov_entries (
     published boolean DEFAULT true NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    manager_user_id integer
 );
 
 
@@ -314,12 +401,55 @@ CREATE SEQUENCE public.gov_entries_id_seq
 ALTER SEQUENCE public.gov_entries_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5045 (class 0 OID 0)
+-- TOC entry 5086 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: gov_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.gov_entries_id_seq OWNED BY public.gov_entries.id;
+
+
+--
+-- TOC entry 240 (class 1259 OID 33636)
+-- Name: municipal_officials; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.municipal_officials (
+    id integer NOT NULL,
+    name text NOT NULL,
+    "position" text NOT NULL,
+    image_url text,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.municipal_officials OWNER TO postgres;
+
+--
+-- TOC entry 239 (class 1259 OID 33635)
+-- Name: municipal_officials_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.municipal_officials_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.municipal_officials_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5087 (class 0 OID 0)
+-- Dependencies: 239
+-- Name: municipal_officials_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.municipal_officials_id_seq OWNED BY public.municipal_officials.id;
 
 
 --
@@ -362,7 +492,7 @@ CREATE SEQUENCE public.offices_id_seq
 ALTER SEQUENCE public.offices_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5046 (class 0 OID 0)
+-- TOC entry 5088 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: offices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -400,7 +530,7 @@ CREATE SEQUENCE public.roles_id_seq
 ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5047 (class 0 OID 0)
+-- TOC entry 5089 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -447,7 +577,7 @@ CREATE SEQUENCE public.services_id_seq
 ALTER SEQUENCE public.services_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5048 (class 0 OID 0)
+-- TOC entry 5090 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: services_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -494,7 +624,7 @@ CREATE SEQUENCE public.users_id_seq
 ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5049 (class 0 OID 0)
+-- TOC entry 5091 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -503,7 +633,7 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- TOC entry 4796 (class 2604 OID 33553)
+-- TOC entry 4808 (class 2604 OID 33553)
 -- Name: barangay_officials id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -511,7 +641,7 @@ ALTER TABLE ONLY public.barangay_officials ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- TOC entry 4783 (class 2604 OID 33454)
+-- TOC entry 4795 (class 2604 OID 33454)
 -- Name: barangays id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -519,7 +649,7 @@ ALTER TABLE ONLY public.barangays ALTER COLUMN id SET DEFAULT nextval('public.ba
 
 
 --
--- TOC entry 4793 (class 2604 OID 33527)
+-- TOC entry 4805 (class 2604 OID 33527)
 -- Name: comments id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -527,7 +657,23 @@ ALTER TABLE ONLY public.comments ALTER COLUMN id SET DEFAULT nextval('public.com
 
 
 --
--- TOC entry 4791 (class 2604 OID 33510)
+-- TOC entry 4836 (class 2604 OID 33669)
+-- Name: downloadable_form_files id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_form_files ALTER COLUMN id SET DEFAULT nextval('public.downloadable_form_files_id_seq'::regclass);
+
+
+--
+-- TOC entry 4833 (class 2604 OID 33652)
+-- Name: downloadable_forms id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_forms ALTER COLUMN id SET DEFAULT nextval('public.downloadable_forms_id_seq'::regclass);
+
+
+--
+-- TOC entry 4803 (class 2604 OID 33510)
 -- Name: forum_post_images id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -535,7 +681,7 @@ ALTER TABLE ONLY public.forum_post_images ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4788 (class 2604 OID 33494)
+-- TOC entry 4800 (class 2604 OID 33494)
 -- Name: forum_posts id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -543,7 +689,7 @@ ALTER TABLE ONLY public.forum_posts ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4804 (class 2604 OID 33588)
+-- TOC entry 4816 (class 2604 OID 33588)
 -- Name: gov_categories id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -551,7 +697,7 @@ ALTER TABLE ONLY public.gov_categories ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- TOC entry 4811 (class 2604 OID 33606)
+-- TOC entry 4823 (class 2604 OID 33606)
 -- Name: gov_entries id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -559,7 +705,15 @@ ALTER TABLE ONLY public.gov_entries ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4782 (class 2604 OID 33443)
+-- TOC entry 4829 (class 2604 OID 33639)
+-- Name: municipal_officials id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.municipal_officials ALTER COLUMN id SET DEFAULT nextval('public.municipal_officials_id_seq'::regclass);
+
+
+--
+-- TOC entry 4794 (class 2604 OID 33443)
 -- Name: offices id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -567,7 +721,7 @@ ALTER TABLE ONLY public.offices ALTER COLUMN id SET DEFAULT nextval('public.offi
 
 
 --
--- TOC entry 4781 (class 2604 OID 33432)
+-- TOC entry 4793 (class 2604 OID 33432)
 -- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -575,7 +729,7 @@ ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_
 
 
 --
--- TOC entry 4798 (class 2604 OID 33569)
+-- TOC entry 4810 (class 2604 OID 33569)
 -- Name: services id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -583,7 +737,7 @@ ALTER TABLE ONLY public.services ALTER COLUMN id SET DEFAULT nextval('public.ser
 
 
 --
--- TOC entry 4784 (class 2604 OID 33465)
+-- TOC entry 4796 (class 2604 OID 33465)
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -591,7 +745,7 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
--- TOC entry 5027 (class 0 OID 33550)
+-- TOC entry 5060 (class 0 OID 33550)
 -- Dependencies: 232
 -- Data for Name: barangay_officials; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -603,7 +757,7 @@ COPY public.barangay_officials (id, barangay_id, name, "position", image_url, so
 
 
 --
--- TOC entry 5017 (class 0 OID 33451)
+-- TOC entry 5050 (class 0 OID 33451)
 -- Dependencies: 222
 -- Data for Name: barangays; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -614,7 +768,7 @@ COPY public.barangays (id, name, description, image_url) FROM stdin;
 
 
 --
--- TOC entry 5025 (class 0 OID 33524)
+-- TOC entry 5058 (class 0 OID 33524)
 -- Dependencies: 230
 -- Data for Name: comments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -624,7 +778,34 @@ COPY public.comments (id, thread_key, user_id, text, parent_id, is_anonymous, cr
 
 
 --
--- TOC entry 5023 (class 0 OID 33507)
+-- TOC entry 5072 (class 0 OID 33666)
+-- Dependencies: 244
+-- Data for Name: downloadable_form_files; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.downloadable_form_files (id, form_id, file_url, original_name, mime_type, size, created_at) FROM stdin;
+1	1	/uploads/forms/form_1765472813394_fn70sxoa6sa.png	\N	\N	\N	2025-12-12 01:42:05.735238
+2	1	/uploads/forms/form_1765474992748_yb62kyttyns.png	Screenshot 2025-12-12 003136.png	image/png	35533	2025-12-12 01:43:12.767792
+3	1	/uploads/forms/form_1765475022829_aykfxvavqa4.docx	PDC-M1-L2-Exercise.docx	application/vnd.openxmlformats-officedocument.wordprocessingml.document	14006	2025-12-12 01:43:42.837643
+\.
+
+
+--
+-- TOC entry 5070 (class 0 OID 33649)
+-- Dependencies: 242
+-- Data for Name: downloadable_forms; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.downloadable_forms (id, office_id, title, description, file_url, created_at, updated_at) FROM stdin;
+1	1	Civil Registry Formm	Form for Civil Registryy	/uploads/forms/form_1765472813394_fn70sxoa6sa.png	2025-12-12 01:06:23.183493	2025-12-12 01:43:42.839173
+2	1	Business Permit	dadad	/uploads/forms/form_1765475576822_g9t38pgxnxe.docx	2025-12-12 01:52:56.843568	2025-12-12 01:52:56.843568
+3	1	sads	sdas	/uploads/forms/form_1765475626111_01w5og0xbotr.docx	2025-12-12 01:53:46.119166	2025-12-12 01:53:46.119166
+4	5	aaaa	aaaa	/uploads/forms/form_1765475664821_5x0nn82idsh.docx	2025-12-12 01:54:24.823937	2025-12-12 01:54:24.823937
+\.
+
+
+--
+-- TOC entry 5056 (class 0 OID 33507)
 -- Dependencies: 228
 -- Data for Name: forum_post_images; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -636,7 +817,7 @@ COPY public.forum_post_images (id, post_id, url, sort_order) FROM stdin;
 
 
 --
--- TOC entry 5021 (class 0 OID 33491)
+-- TOC entry 5054 (class 0 OID 33491)
 -- Dependencies: 226
 -- Data for Name: forum_posts; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -648,31 +829,42 @@ COPY public.forum_posts (id, user_id, title, message, category, location, is_ano
 
 
 --
--- TOC entry 5031 (class 0 OID 33585)
+-- TOC entry 5064 (class 0 OID 33585)
 -- Dependencies: 236
 -- Data for Name: gov_categories; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.gov_categories (id, slug, title, description, schema_json, layout_json, is_active, sort_order, created_at, updated_at) FROM stdin;
-1	executive-order	Executive Orders	These are the executive orders given by the governement.	{"fields": [{"key": "name", "type": "text", "label": "Executive Order Name", "required": true}, {"key": "number", "type": "number", "label": "Executive Order Number", "required": true}, {"key": "description", "type": "textarea", "label": "Description", "required": false}, {"key": "document", "type": "files", "label": "Document", "required": true}]}	{"style": "list"}	t	0	2025-12-10 23:13:10.659681	2025-12-11 00:38:14.711918
-2	ordinances	Ordinances	These are the ordinances of the municipality of caba.	{"fields": [{"key": "ordinance_image", "type": "image", "label": "ordinance_image", "required": false}, {"key": "description", "type": "text", "label": "description", "required": true}]}	{"style": "list"}	t	0	2025-12-10 23:28:31.976054	2025-12-11 00:48:32.422038
+2	ordinances	Ordinances	These are the ordinances of the municipality of caba.	{"fields": [{"key": "ordinance_image", "type": "image", "label": "", "required": false}, {"key": "description", "type": "text", "label": "description", "required": true}]}	{"style": "list"}	t	0	2025-12-10 23:28:31.976054	2025-12-11 02:08:33.415533
+3	resolutions	Resolutions	This section are for resolutions	{"fields": [{"key": "image", "type": "images", "label": "", "required": false}, {"key": "title", "type": "text", "label": "title", "required": true}, {"key": "document", "type": "files", "label": "document", "required": false}, {"key": "description", "type": "text", "label": "description", "required": false}]}	{"style": "list"}	t	0	2025-12-11 20:55:15.320133	2025-12-11 20:55:15.320133
 \.
 
 
 --
--- TOC entry 5033 (class 0 OID 33603)
+-- TOC entry 5066 (class 0 OID 33603)
 -- Dependencies: 238
 -- Data for Name: gov_entries; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.gov_entries (id, category_id, title, content_json, published, sort_order, created_at, updated_at) FROM stdin;
-1	1	Series of 2025	{"name": "AN EXECUTIVE ORDER ESTABLISHING THE OFFICIAL GUIDELINES FOR THE IMPLEMENTATION OF THE DIGITAL ATTENDANCE MONITORING SYSTEM FOR ALL UNIVERSITY FLAG CEREMONIE", "image": ["/uploads/gov/gov_1765383363854_hmuaefwxxf6.png"], "number": "05", "document": ["/uploads/gov/gov_1765384718423_l9sbua20xj.docx"], "description": "WHEREAS, the University recognizes the importance of efficiency, accuracy, and accountability in monitoring student and personnel attendance during weekly flag ceremonies;\\nWHEREAS, manual attendance checking has resulted in delays, inconsistencies, and difficulties in consolidating attendance records;\\nWHEREAS, there is a need to adopt a standardized digital system that ensures seamless data collection through QR code scanning and biometric verification;\\nWHEREAS, the University Administration is empowered under its Charter to create policies ensuring order, discipline, and operational efficiency;\\nNOW, THEREFORE, I, DR. ALEXANDER M. CRUZ, University President, by virtue of the authority vested in me by the University Charter and existing institutional policies, do hereby order the following:\\nSECTION 1. POLICY DECLARATION.\\n\\nThe University shall implement a Digital Attendance Monitoring System (DAMS) to ensure accurate, efficient, and transparent recording of attendance during all official flag ceremonies.\\n\\nSECTION 2. SCOPE AND COVERAGE.\\n\\nThis Executive Order applies to:\\na. All enrolled students;\\nb. All teaching and non-teaching personnel;\\nc. All departments, colleges, and administrative units of the University.\\n\\nSECTION 3. IMPLEMENTATION GUIDELINES.\\n\\nAll students and personnel shall use their official University ID, which contains a unique QR code, for attendance scanning.\\n\\nBiometric verification shall be required for students flagged for identity confirmation.\\n\\nThe scanning stations shall be placed at designated entry points leading to the ceremony area.\\n\\nAttendance logs will automatically synchronize with the University’s central database.\\n\\nAny attempt to falsify attendance or misuse another person’s ID shall be subject to disciplinary action based on existing University policies.\\n\\nTechnical personnel shall be assigned to ensure that scanning devices are fully operational before each ceremony.\\n\\nSECTION 4. DUTIES OF RESPONSIBLE OFFICES.\\n\\na. ICT Department – Maintain the digital system, update databases, and troubleshoot technical issues.\\nb. Office of Student Affairs – Oversee student compliance and address attendance-related inquiries.\\nc. Human Resources Office – Monitor attendance of university personnel.\\nd. Security Office – Assist in maintaining order at scanning stations.\\n\\nSECTION 5. FUNDING.\\n\\nThe implementation of this Order shall be funded through the University’s approved annual budget allocation for technological upgrades and administrative support.\\n\\nSECTION 6. REPEALING CLAUSE.\\n\\nAll previous orders, issuances, and memoranda inconsistent with this Executive Order are hereby repealed, amended, or modified accordingly.\\n\\nSECTION 7. EFFECTIVITY.\\n\\nThis Executive Order shall take effect immediately upon approval.\\n\\nDONE this 10th day of December 2025, at the University of San Fernando, La Union.\\n<br>\\n\\n__________________________________\\nDR. ALEXANDER M. CRUZ\\nUniversity President"}	t	0	2025-12-10 23:15:50.638432	2025-12-11 00:38:38.437265
-3	2	ordiannce	{"name": "ordinacne 1", "description": "descrription", "ordinance image": "/uploads/gov/gov_1765384983879_lgf1x33d1r.jpg", "ordinance_image": "/uploads/gov/gov_1765385108132_9dq0pwdp7cf.jpg"}	t	0	2025-12-11 00:43:03.884863	2025-12-11 00:45:23.42949
+COPY public.gov_entries (id, category_id, title, content_json, published, sort_order, created_at, updated_at, manager_user_id) FROM stdin;
+3	2	ordiannce	{"name": "ordinacne 1", "description": "descrription", "ordinance image": "/uploads/gov/gov_1765384983879_lgf1x33d1r.jpg", "ordinance_image": "/uploads/gov/gov_1765390128781_wj70o616h4.png"}	t	0	2025-12-11 00:43:03.884863	2025-12-11 02:16:52.823548	3
+5	3	Resolution no.1	{"image": ["/uploads/gov/gov_1765457791845_bp1be6ronj4.jpg"], "title": "reso 1", "document": ["/uploads/gov/gov_1765457791852_bpj9w5maos8.docx"], "description": "This document contains the description about reso 1"}	t	0	2025-12-11 20:56:31.883605	2025-12-11 20:56:31.883605	3
 \.
 
 
 --
--- TOC entry 5015 (class 0 OID 33440)
+-- TOC entry 5068 (class 0 OID 33636)
+-- Dependencies: 240
+-- Data for Name: municipal_officials; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.municipal_officials (id, name, "position", image_url, sort_order, created_at, updated_at) FROM stdin;
+2	ren f abuan	mayor	/uploads/gov/gov_1765470719294_wjj0he58q0q.png	0	2025-12-12 00:31:59.300037	2025-12-12 00:31:59.300037
+\.
+
+
+--
+-- TOC entry 5048 (class 0 OID 33440)
 -- Dependencies: 220
 -- Data for Name: offices; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -684,7 +876,7 @@ COPY public.offices (id, name, description, slug, head, location, contact, map_q
 
 
 --
--- TOC entry 5013 (class 0 OID 33429)
+-- TOC entry 5046 (class 0 OID 33429)
 -- Dependencies: 218
 -- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -699,33 +891,34 @@ COPY public.roles (id, name) FROM stdin;
 
 
 --
--- TOC entry 5029 (class 0 OID 33566)
+-- TOC entry 5062 (class 0 OID 33566)
 -- Dependencies: 234
 -- Data for Name: services; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.services (id, office_id, name, description, venue, contact, requirements, steps, forms, created_at, updated_at) FROM stdin;
-1	1	Civil Registryy	Civil Registry Service Instructionss	Poblacion Nortee	(042)1	["Requirement 11", "Requirement 22", "Req 3"]	["Step 11", "Step 22", "Step 33", "Step 44"]	[{"url": "/uploads/services/svc_form_1765374410388_k39ivtekc9.png", "label": "M1 L2"}]	2025-12-10 03:49:14.026093	2025-12-10 21:47:09.310301
+3	5	try	try	asd	123	["1"]	["1"]	[{"url": "/uploads/services/svc_form_1765471263204_wrrs9a93ro.png", "label": "Screenshot 2025-12-12 003136.png"}]	2025-12-12 00:41:03.211076	2025-12-12 00:41:03.211076
+1	1	Civil Registryy	Civil Registry Service Instructionss	Poblacion Nortee	(042)1	["Requirement 11", "Requirement 22", "Req 3"]	["Step 11", "Step 22", "Step 33", "Step 44"]	[{"url": "/uploads/services/svc_form_1765374410388_k39ivtekc9.png", "label": "M1 L2"}, {"url": "/uploads/services/svc_form_1765472908625_h8nxbzjrpyg.png", "label": "image"}]	2025-12-10 03:49:14.026093	2025-12-12 01:08:28.631172
 \.
 
 
 --
--- TOC entry 5019 (class 0 OID 33462)
+-- TOC entry 5052 (class 0 OID 33462)
 -- Dependencies: 224
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.users (id, full_name, email, password_hash, role_id, office_id, barangay_id, is_active, created_at, updated_at, profile_image_url) FROM stdin;
-1	Super Admin	superadmin@govconnect.local	$2a$10$HYEeqdTx2LTy6qMl0SD4Yu2v9J1d2JJsQwuZ7j2LtFDaoVYzNepdy	1	\N	\N	t	2025-12-09 23:37:06.808542	2025-12-10 23:03:17.157682	\N
-2	Admin User	admin@govconnect.local	$2a$10$SjssyuLHufmBrly/8HXoeOcC7NoNscZuJ2HGYxYBdI17Mm6xCnxS.	2	\N	\N	t	2025-12-09 23:37:06.8918	2025-12-10 23:03:17.239231	\N
-3	Office Officer	officer@govconnect.local	$2a$10$xfkihROAZ3.5VF.hJIY8c.7KEHmMnynCremfjT9c2J7S1nUYvbEe.	3	1	\N	t	2025-12-09 23:37:06.975021	2025-12-10 23:03:17.320343	\N
-4	Barangay Captain	captain@govconnect.local	$2a$10$b5bJRkmtmfnHL27QeoSz/ObvG.gJOHxWUPJoJNdS1PBdUc2GK.3Pu	4	\N	1	t	2025-12-09 23:37:07.058872	2025-12-10 23:03:17.40206	\N
-5	Juan Dela Cruz	constituent@govconnect.local	$2a$10$6yleN5yDMQH8NCKmSW1JaOgQGi5zF39j8RmAGNpECwVVO8knTev9u	5	\N	1	t	2025-12-09 23:37:07.142969	2025-12-10 23:03:17.485678	\N
+1	Super Admin	superadmin@govconnect.local	$2a$10$LoKc1EvCxLnIK6BbFfjV8.rHWZbxjuzS4eZYMjMuX6JvYKM8zmMqG	1	\N	\N	t	2025-12-09 23:37:06.808542	2025-12-12 01:42:05.837254	\N
+2	Admin User	admin@govconnect.local	$2a$10$5CF1Qi4k.fp1U3U/0UrhoO3DAjtGM3QGCD299cvcHn.UpjBUjGz/2	2	\N	\N	t	2025-12-09 23:37:06.8918	2025-12-12 01:42:05.922038	\N
+3	Office Officer	officer@govconnect.local	$2a$10$DmgVFgF6ppnQBdbKpOTUJuWjf9b.F/pltwv6qY4payNQInQtqJibq	3	1	\N	t	2025-12-09 23:37:06.975021	2025-12-12 01:42:06.003446	\N
+4	Barangay Captain	captain@govconnect.local	$2a$10$eEUqYMVvhZk6VgLF.C3UDO51i7nN3cvCbMxe/NMkd07Ed.sQDfKJi	4	\N	1	t	2025-12-09 23:37:07.058872	2025-12-12 01:42:06.08413	\N
+5	Juan Dela Cruz	constituent@govconnect.local	$2a$10$Q0YT.zMWSMJSNTzR6kA7NeF/ZCRAhwyKOies9BpHsNYGwTzDvQ1pi	5	\N	1	t	2025-12-09 23:37:07.142969	2025-12-12 01:42:06.166342	\N
 \.
 
 
 --
--- TOC entry 5050 (class 0 OID 0)
+-- TOC entry 5092 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: barangay_officials_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -734,16 +927,16 @@ SELECT pg_catalog.setval('public.barangay_officials_id_seq', 8, true);
 
 
 --
--- TOC entry 5051 (class 0 OID 0)
+-- TOC entry 5093 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: barangays_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.barangays_id_seq', 11, true);
+SELECT pg_catalog.setval('public.barangays_id_seq', 16, true);
 
 
 --
--- TOC entry 5052 (class 0 OID 0)
+-- TOC entry 5094 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: comments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -752,7 +945,25 @@ SELECT pg_catalog.setval('public.comments_id_seq', 1, false);
 
 
 --
--- TOC entry 5053 (class 0 OID 0)
+-- TOC entry 5095 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: downloadable_form_files_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.downloadable_form_files_id_seq', 3, true);
+
+
+--
+-- TOC entry 5096 (class 0 OID 0)
+-- Dependencies: 241
+-- Name: downloadable_forms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.downloadable_forms_id_seq', 4, true);
+
+
+--
+-- TOC entry 5097 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: forum_post_images_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -761,7 +972,7 @@ SELECT pg_catalog.setval('public.forum_post_images_id_seq', 2, true);
 
 
 --
--- TOC entry 5054 (class 0 OID 0)
+-- TOC entry 5098 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: forum_posts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -770,52 +981,61 @@ SELECT pg_catalog.setval('public.forum_posts_id_seq', 2, true);
 
 
 --
--- TOC entry 5055 (class 0 OID 0)
+-- TOC entry 5099 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: gov_categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.gov_categories_id_seq', 2, true);
+SELECT pg_catalog.setval('public.gov_categories_id_seq', 3, true);
 
 
 --
--- TOC entry 5056 (class 0 OID 0)
+-- TOC entry 5100 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: gov_entries_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.gov_entries_id_seq', 3, true);
+SELECT pg_catalog.setval('public.gov_entries_id_seq', 5, true);
 
 
 --
--- TOC entry 5057 (class 0 OID 0)
+-- TOC entry 5101 (class 0 OID 0)
+-- Dependencies: 239
+-- Name: municipal_officials_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.municipal_officials_id_seq', 2, true);
+
+
+--
+-- TOC entry 5102 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: offices_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.offices_id_seq', 13, true);
+SELECT pg_catalog.setval('public.offices_id_seq', 18, true);
 
 
 --
--- TOC entry 5058 (class 0 OID 0)
+-- TOC entry 5103 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.roles_id_seq', 35, true);
+SELECT pg_catalog.setval('public.roles_id_seq', 60, true);
 
 
 --
--- TOC entry 5059 (class 0 OID 0)
+-- TOC entry 5104 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: services_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.services_id_seq', 1, true);
+SELECT pg_catalog.setval('public.services_id_seq', 3, true);
 
 
 --
--- TOC entry 5060 (class 0 OID 0)
+-- TOC entry 5105 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -824,7 +1044,7 @@ SELECT pg_catalog.setval('public.users_id_seq', 5, true);
 
 
 --
--- TOC entry 4845 (class 2606 OID 33558)
+-- TOC entry 4866 (class 2606 OID 33558)
 -- Name: barangay_officials barangay_officials_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -833,7 +1053,7 @@ ALTER TABLE ONLY public.barangay_officials
 
 
 --
--- TOC entry 4827 (class 2606 OID 33460)
+-- TOC entry 4848 (class 2606 OID 33460)
 -- Name: barangays barangays_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -842,7 +1062,7 @@ ALTER TABLE ONLY public.barangays
 
 
 --
--- TOC entry 4829 (class 2606 OID 33458)
+-- TOC entry 4850 (class 2606 OID 33458)
 -- Name: barangays barangays_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -851,7 +1071,7 @@ ALTER TABLE ONLY public.barangays
 
 
 --
--- TOC entry 4841 (class 2606 OID 33533)
+-- TOC entry 4862 (class 2606 OID 33533)
 -- Name: comments comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -860,7 +1080,25 @@ ALTER TABLE ONLY public.comments
 
 
 --
--- TOC entry 4838 (class 2606 OID 33515)
+-- TOC entry 4885 (class 2606 OID 33674)
+-- Name: downloadable_form_files downloadable_form_files_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_form_files
+    ADD CONSTRAINT downloadable_form_files_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4882 (class 2606 OID 33658)
+-- Name: downloadable_forms downloadable_forms_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_forms
+    ADD CONSTRAINT downloadable_forms_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4859 (class 2606 OID 33515)
 -- Name: forum_post_images forum_post_images_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -869,7 +1107,7 @@ ALTER TABLE ONLY public.forum_post_images
 
 
 --
--- TOC entry 4835 (class 2606 OID 33500)
+-- TOC entry 4856 (class 2606 OID 33500)
 -- Name: forum_posts forum_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -878,7 +1116,7 @@ ALTER TABLE ONLY public.forum_posts
 
 
 --
--- TOC entry 4850 (class 2606 OID 33598)
+-- TOC entry 4871 (class 2606 OID 33598)
 -- Name: gov_categories gov_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -887,7 +1125,7 @@ ALTER TABLE ONLY public.gov_categories
 
 
 --
--- TOC entry 4852 (class 2606 OID 33600)
+-- TOC entry 4873 (class 2606 OID 33600)
 -- Name: gov_categories gov_categories_slug_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -896,7 +1134,7 @@ ALTER TABLE ONLY public.gov_categories
 
 
 --
--- TOC entry 4855 (class 2606 OID 33615)
+-- TOC entry 4876 (class 2606 OID 33615)
 -- Name: gov_entries gov_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -905,7 +1143,16 @@ ALTER TABLE ONLY public.gov_entries
 
 
 --
--- TOC entry 4823 (class 2606 OID 33449)
+-- TOC entry 4880 (class 2606 OID 33646)
+-- Name: municipal_officials municipal_officials_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.municipal_officials
+    ADD CONSTRAINT municipal_officials_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4844 (class 2606 OID 33449)
 -- Name: offices offices_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -914,7 +1161,7 @@ ALTER TABLE ONLY public.offices
 
 
 --
--- TOC entry 4825 (class 2606 OID 33447)
+-- TOC entry 4846 (class 2606 OID 33447)
 -- Name: offices offices_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -923,7 +1170,7 @@ ALTER TABLE ONLY public.offices
 
 
 --
--- TOC entry 4818 (class 2606 OID 33438)
+-- TOC entry 4839 (class 2606 OID 33438)
 -- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -932,7 +1179,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 4820 (class 2606 OID 33436)
+-- TOC entry 4841 (class 2606 OID 33436)
 -- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -941,7 +1188,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 4848 (class 2606 OID 33578)
+-- TOC entry 4869 (class 2606 OID 33578)
 -- Name: services services_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -950,7 +1197,7 @@ ALTER TABLE ONLY public.services
 
 
 --
--- TOC entry 4831 (class 2606 OID 33474)
+-- TOC entry 4852 (class 2606 OID 33474)
 -- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -959,7 +1206,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 4833 (class 2606 OID 33472)
+-- TOC entry 4854 (class 2606 OID 33472)
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -968,7 +1215,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 4846 (class 1259 OID 33564)
+-- TOC entry 4867 (class 1259 OID 33564)
 -- Name: idx_barangay_officials_barangay_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -976,7 +1223,7 @@ CREATE INDEX idx_barangay_officials_barangay_id ON public.barangay_officials USI
 
 
 --
--- TOC entry 4842 (class 1259 OID 33545)
+-- TOC entry 4863 (class 1259 OID 33545)
 -- Name: idx_comments_parent_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -984,7 +1231,7 @@ CREATE INDEX idx_comments_parent_id ON public.comments USING btree (parent_id);
 
 
 --
--- TOC entry 4843 (class 1259 OID 33544)
+-- TOC entry 4864 (class 1259 OID 33544)
 -- Name: idx_comments_thread_key; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -992,7 +1239,23 @@ CREATE INDEX idx_comments_thread_key ON public.comments USING btree (thread_key)
 
 
 --
--- TOC entry 4839 (class 1259 OID 33522)
+-- TOC entry 4886 (class 1259 OID 33680)
+-- Name: idx_downloadable_form_files_form_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_downloadable_form_files_form_id ON public.downloadable_form_files USING btree (form_id);
+
+
+--
+-- TOC entry 4883 (class 1259 OID 33664)
+-- Name: idx_downloadable_forms_office_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_downloadable_forms_office_id ON public.downloadable_forms USING btree (office_id);
+
+
+--
+-- TOC entry 4860 (class 1259 OID 33522)
 -- Name: idx_forum_post_images_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1000,7 +1263,7 @@ CREATE INDEX idx_forum_post_images_post_id ON public.forum_post_images USING btr
 
 
 --
--- TOC entry 4836 (class 1259 OID 33521)
+-- TOC entry 4857 (class 1259 OID 33521)
 -- Name: idx_forum_posts_created_at; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1008,7 +1271,7 @@ CREATE INDEX idx_forum_posts_created_at ON public.forum_posts USING btree (creat
 
 
 --
--- TOC entry 4853 (class 1259 OID 33601)
+-- TOC entry 4874 (class 1259 OID 33601)
 -- Name: idx_gov_categories_slug_unique; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1016,7 +1279,7 @@ CREATE UNIQUE INDEX idx_gov_categories_slug_unique ON public.gov_categories USIN
 
 
 --
--- TOC entry 4856 (class 1259 OID 33621)
+-- TOC entry 4877 (class 1259 OID 33621)
 -- Name: idx_gov_entries_category_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1024,7 +1287,15 @@ CREATE INDEX idx_gov_entries_category_id ON public.gov_entries USING btree (cate
 
 
 --
--- TOC entry 4821 (class 1259 OID 33548)
+-- TOC entry 4878 (class 1259 OID 33647)
+-- Name: idx_municipal_officials_sort; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_municipal_officials_sort ON public.municipal_officials USING btree (sort_order);
+
+
+--
+-- TOC entry 4842 (class 1259 OID 33548)
 -- Name: idx_offices_slug_unique; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1032,7 +1303,7 @@ CREATE UNIQUE INDEX idx_offices_slug_unique ON public.offices USING btree (slug)
 
 
 --
--- TOC entry 4864 (class 2606 OID 33559)
+-- TOC entry 4894 (class 2606 OID 33559)
 -- Name: barangay_officials barangay_officials_barangay_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1041,7 +1312,7 @@ ALTER TABLE ONLY public.barangay_officials
 
 
 --
--- TOC entry 4862 (class 2606 OID 33539)
+-- TOC entry 4892 (class 2606 OID 33539)
 -- Name: comments comments_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1050,7 +1321,7 @@ ALTER TABLE ONLY public.comments
 
 
 --
--- TOC entry 4863 (class 2606 OID 33534)
+-- TOC entry 4893 (class 2606 OID 33534)
 -- Name: comments comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1059,7 +1330,25 @@ ALTER TABLE ONLY public.comments
 
 
 --
--- TOC entry 4861 (class 2606 OID 33516)
+-- TOC entry 4899 (class 2606 OID 33675)
+-- Name: downloadable_form_files downloadable_form_files_form_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_form_files
+    ADD CONSTRAINT downloadable_form_files_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.downloadable_forms(id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4898 (class 2606 OID 33659)
+-- Name: downloadable_forms downloadable_forms_office_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.downloadable_forms
+    ADD CONSTRAINT downloadable_forms_office_id_fkey FOREIGN KEY (office_id) REFERENCES public.offices(id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4891 (class 2606 OID 33516)
 -- Name: forum_post_images forum_post_images_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1068,7 +1357,7 @@ ALTER TABLE ONLY public.forum_post_images
 
 
 --
--- TOC entry 4860 (class 2606 OID 33501)
+-- TOC entry 4890 (class 2606 OID 33501)
 -- Name: forum_posts forum_posts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1077,7 +1366,7 @@ ALTER TABLE ONLY public.forum_posts
 
 
 --
--- TOC entry 4866 (class 2606 OID 33616)
+-- TOC entry 4896 (class 2606 OID 33616)
 -- Name: gov_entries gov_entries_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1086,7 +1375,16 @@ ALTER TABLE ONLY public.gov_entries
 
 
 --
--- TOC entry 4865 (class 2606 OID 33579)
+-- TOC entry 4897 (class 2606 OID 33628)
+-- Name: gov_entries gov_entries_manager_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.gov_entries
+    ADD CONSTRAINT gov_entries_manager_user_id_fkey FOREIGN KEY (manager_user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 4895 (class 2606 OID 33579)
 -- Name: services services_office_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1095,7 +1393,7 @@ ALTER TABLE ONLY public.services
 
 
 --
--- TOC entry 4857 (class 2606 OID 33485)
+-- TOC entry 4887 (class 2606 OID 33485)
 -- Name: users users_barangay_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1104,7 +1402,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 4858 (class 2606 OID 33480)
+-- TOC entry 4888 (class 2606 OID 33480)
 -- Name: users users_office_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1113,7 +1411,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 4859 (class 2606 OID 33475)
+-- TOC entry 4889 (class 2606 OID 33475)
 -- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1121,7 +1419,7 @@ ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id);
 
 
--- Completed on 2025-12-11 00:57:09
+-- Completed on 2025-12-12 02:06:49
 
 --
 -- PostgreSQL database dump complete
