@@ -342,7 +342,7 @@ export default function Government() {
         </div>
       </section>
 
-      <div className="my-8 border-t-2 border-gray-300" />
+      
 
       {/* Dynamic Government Categories */}
       <section id="dynamic-categories">

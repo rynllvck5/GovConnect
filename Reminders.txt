@@ -75,3 +75,22 @@ ChangeMe_Captain123!
 Constituent:
 constituent@govconnect.local
 ChangeMe_Constituent123!
+
+
+
+
+COMMENTS:
+Palitan ang color sa green (bamboo)
+‎MAglagay ng mga national link
+‎Home ( background)
+‎Time clock 
+‎Slide
+‎
+‎About(feedback form na pwedeng isubmit)
+‎Caba mismo nakapin google map, emergency hotline.
+‎
+‎Sa bgry tanggalin ang remove (admin nalang ang makakapag add) or permission para galing admin ang paggamit ni bgry capt.
+‎
+‎History 
+‎
+‎Sa offices, directory, services , feedback form

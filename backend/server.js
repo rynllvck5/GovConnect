@@ -13,7 +13,10 @@ const commentRoutes = require('./routes/comments');
 const profileRoutes = require('./routes/profile');
 const servicesRoutes = require('./routes/services');
 const govRoutes = require('./routes/gov');
+const tourismRoutes = require('./routes/tourism');
 const formsRoutes = require('./routes/forms');
+const uploadsRoutes = require('./routes/uploads');
+const projectsRoutes = require('./routes/projects');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -57,7 +60,10 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/gov', govRoutes);
+app.use('/api/tourism', tourismRoutes);
 app.use('/api/forms', formsRoutes);
+app.use('/api/uploads', uploadsRoutes);
+app.use('/api/projects', projectsRoutes);
 
 // Test route
 app.get('/api', (req, res) => {
