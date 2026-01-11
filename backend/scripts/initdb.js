@@ -145,6 +145,55 @@ async function run() {
   await query('CREATE INDEX IF NOT EXISTS idx_gov_entries_category_id ON gov_entries(category_id)');
   await query('ALTER TABLE gov_entries ADD COLUMN IF NOT EXISTS manager_user_id INTEGER REFERENCES users(id)');
 
+  // Dynamic Tourism CMS tables
+  await query(`CREATE TABLE IF NOT EXISTS tourism_categories (
+    id SERIAL PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    schema_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    layout_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_tourism_categories_slug_unique ON tourism_categories(slug)');
+
+  await query(`CREATE TABLE IF NOT EXISTS tourism_entries (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES tourism_categories(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL,
+    barangay_id INTEGER NOT NULL REFERENCES barangays(id) ON DELETE RESTRICT,
+    title TEXT,
+    content_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    published BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE INDEX IF NOT EXISTS idx_tourism_entries_category_id ON tourism_entries(category_id)');
+  await query('CREATE INDEX IF NOT EXISTS idx_tourism_entries_slug ON tourism_entries(slug)');
+
+  // Projects (dynamic)
+  await query(`CREATE TABLE IF NOT EXISTS projects (
+    id SERIAL PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    department TEXT,
+    budget NUMERIC,
+    status TEXT,
+    start_date DATE,
+    end_date DATE,
+    image_url TEXT,
+    content_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    published BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`);
+  await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug_unique ON projects(slug)');
+
   // Municipal officials (for Government section)
   await query(`CREATE TABLE IF NOT EXISTS municipal_officials (
     id SERIAL PRIMARY KEY,

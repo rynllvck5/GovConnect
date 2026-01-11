@@ -40,4 +40,18 @@ async function canManageGovEntry(req, res, next) {
   return res.status(403).json({ error: 'Forbidden' });
 }
 
-module.exports = { permit, canManageOffice, canManageBarangay, canManageGovEntry };
+async function canManageTourismEntry(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.user.role === 'superadmin' || req.user.role === 'admin') return next();
+  if (req.user.role === 'barangay_captain' && req.user.barangay_id) {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
+    try {
+      const { rows } = await query('SELECT barangay_id FROM tourism_entries WHERE id=$1', [id]);
+      if (rows.length && Number(rows[0].barangay_id) === Number(req.user.barangay_id)) return next();
+    } catch {}
+  }
+  return res.status(403).json({ error: 'Forbidden' });
+}
+
+module.exports = { permit, canManageOffice, canManageBarangay, canManageGovEntry, canManageTourismEntry };
